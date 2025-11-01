@@ -5,7 +5,7 @@ import { RealTimeClock } from '@/app/components/real-time-clock';
 const Header = () => {
   return (
     <header
-      className="bg-panel-bg border-border-default flex h-[60px] w-full items-center justify-between border-b-[0.5px] px-8"
+      className="bg-panel-bg border-border-default sticky top-0 z-50 flex h-[60px] w-full items-center justify-between border-b-[0.5px] px-4"
       role="banner"
       aria-label="Site header"
     >
