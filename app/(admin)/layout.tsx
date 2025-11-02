@@ -1,5 +1,5 @@
 import { ThemeToggle } from '../components/theme-toggle';
-import Header from './dashboard/header';
+import Header from './components/Header';
 
 export default function AdminLayout({
   children,

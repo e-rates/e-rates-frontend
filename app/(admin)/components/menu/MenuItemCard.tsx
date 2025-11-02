@@ -31,9 +31,8 @@ export const MenuItemCard = ({
       {isActive && (
         <motion.div
           layoutId="activeBackground"
-          className={`absolute inset-0 rounded-[10px] ${
-            isDark ? 'bg-white' : 'bg-black'
-          }`}
+          // Use static classes with dark: variant so SSR markup matches client
+          className="absolute inset-0 rounded-[10px] bg-black dark:bg-white"
           initial={false}
           transition={{
             type: 'spring',
@@ -60,32 +59,16 @@ export const MenuItemCard = ({
           isCollapsed
             ? 'mx-auto h-auto w-12 flex-col justify-center gap-1 px-1 py-2'
             : 'h-10 w-full gap-3 px-3'
-        } ${
-          !isActive
-            ? isDark
-              ? 'bg-[#4A4A4A]/35 hover:bg-[#5A5A5A]/50'
-              : 'bg-gray-100/60 hover:bg-gray-200/80'
-            : 'hover:bg-transparent'
-        }`}
+        } ${!isActive ? 'bg-gray-100/80 hover:bg-gray-200/90 dark:bg-[#4A4A4A]/35 dark:hover:bg-[#5A5A5A]/50' : 'hover:bg-transparent'}`}
         onClick={onClick}
         title={name}
       >
-        <motion.div
-          initial={false}
-          animate={{
-            color: isActive
-              ? isDark
-                ? '#000000'
-                : '#ffffff'
-              : isDark
-                ? '#d1d5db'
-                : '#6b7280',
-          }}
-          transition={{
-            delay: isActive ? 0.3 : 0,
-            duration: 0.2,
-            ease: 'easeOut',
-          }}
+        <div
+          className={`${
+            isActive
+              ? 'text-white dark:text-black'
+              : 'text-gray-600 dark:text-[#d1d5db]'
+          }`}
           style={{
             filter: !isActive ? 'drop-shadow(0 0 0.5px currentColor)' : 'none',
           }}
@@ -95,22 +78,19 @@ export const MenuItemCard = ({
             fill={isActive ? 'currentColor' : 'none'}
             strokeWidth={!isActive ? 1.5 : 2}
           />
-        </motion.div>
+        </div>
 
         {isCollapsed ? (
           <motion.span
-            className="text-center text-[9px] leading-tight font-medium"
+            className={`text-center text-[9px] leading-tight font-medium ${
+              isActive
+                ? 'text-white dark:text-black'
+                : 'text-gray-600 dark:text-[#d1d5db]'
+            }`}
             initial={false}
             animate={{
               opacity: isCollapsed ? 1 : 0,
               y: isCollapsed ? 0 : -5,
-              color: isActive
-                ? isDark
-                  ? '#000000'
-                  : '#ffffff'
-                : isDark
-                  ? '#d1d5db'
-                  : '#6b7280',
             }}
             transition={{
               delay: 0.3 + index * 0.05,
@@ -122,19 +102,15 @@ export const MenuItemCard = ({
           </motion.span>
         ) : (
           <motion.p
-            className="text-regular-md overflow-hidden font-medium whitespace-nowrap"
+            className={`text-regular-md overflow-hidden font-medium whitespace-nowrap ${
+              isActive
+                ? 'text-white dark:text-black'
+                : 'text-gray-600 dark:text-[#d1d5db]'
+            }`}
             initial={false}
             animate={{
               opacity: isCollapsed ? 0 : 1,
-              width: isCollapsed ? 0 : 'auto',
               x: isCollapsed ? -10 : 0,
-              color: isActive
-                ? isDark
-                  ? '#000000'
-                  : '#ffffff'
-                : isDark
-                  ? '#d1d5db'
-                  : '#6b7280',
             }}
             transition={{
               delay: isActive ? 0.3 + index * 0.05 : index * 0.05,

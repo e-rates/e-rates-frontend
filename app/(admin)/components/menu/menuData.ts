@@ -5,6 +5,8 @@ import {
   UserX,
   BarChart3,
   Clock,
+  Settings,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -23,6 +25,11 @@ export const menuItems: MenuItem[] = [
   { name: 'History', icon: Clock },
 ];
 
+export const bottomMenuItems: MenuItem[] = [
+  { name: 'Account', icon: User },
+  { name: 'Settings', icon: Settings },
+];
+
 export const shortLabels: Record<string, string> = {
   Home: 'Home',
   'Rate Payments': 'Rates',
@@ -30,4 +37,6 @@ export const shortLabels: Record<string, string> = {
   Defaulters: 'Defaulters',
   Reports: 'Reports',
   History: 'History',
+  Account: 'Account',
+  Settings: 'Settings',
 };

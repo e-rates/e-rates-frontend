@@ -25,6 +25,22 @@
   z-index: 9999;
 }
 
+/* Firefox-specific fix for theme flash */
+@supports (-moz-appearance: none) {
+  html {
+    color-scheme: light dark;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  /* Prevent flash on theme change in Firefox */
+  * {
+    transition: none !important;
+  }
+}
+
 :root {
   /* Typography */
   --font-sans: var(--font-dm-sans);
