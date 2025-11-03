@@ -82,7 +82,7 @@ const Map = () => {
           setUserLocation([latitude, longitude]);
         },
         (error) => {
-          console.error('Error getting location:', error);
+          // Error is already displayed via locationError state
           setLocationError(error.message);
         },
         {
@@ -114,7 +114,7 @@ const Map = () => {
         zoom={zoom}
         scrollWheelZoom={true}
         style={{ height: '100%', width: '100%' }}
-        className="z-0"
+        className="border-default z-0 bg-rose-300"
       >
         {/* Map tiles that change with theme */}
         <TileLayer
