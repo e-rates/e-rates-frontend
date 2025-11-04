@@ -1,17 +1,18 @@
-import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "./providers";
+import type { Metadata } from 'next';
+import { DM_Sans } from 'next/font/google';
+import './globals.css';
+import { ThemeProvider } from './providers';
+import { ThemedToaster } from './components/themed-toaster';
 
 const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"], // Regular, Medium, Bold
+  variable: '--font-dm-sans',
+  subsets: ['latin'],
+  weight: ['400', '500', '700'], // Regular, Medium, Bold
 });
 
 export const metadata: Metadata = {
-  title: "E-Rates",
-  description: "Exchange rate management system",
+  title: 'E-Rates',
+  description: 'Exchange rate management system',
 };
 
 export default function RootLayout({
@@ -29,6 +30,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <ThemedToaster />
         </ThemeProvider>
       </body>
     </html>

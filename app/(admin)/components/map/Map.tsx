@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from 'next-themes';
 import { ParcelLayer } from '@/app/(admin)/components/map/ParcelLayer';
+import toast from 'react-hot-toast';
+import { useMapContext } from '../../context/MapContext';
 
 // Fix for default marker icons in Next.js
 const icon = L.icon({
@@ -24,6 +26,18 @@ L.Marker.prototype.options.icon = icon;
 // Component to update map view when location changes
 function LocationMarker({ position }: { position: [number, number] | null }) {
   const map = useMap();
+  const { mapRef, setIsMapInView } = useMapContext();
+
+  useEffect(() => {
+    if (map) {
+      mapRef.current = map;
+      setIsMapInView(true);
+    }
+
+    return () => {
+      setIsMapInView(false);
+    };
+  }, [map, mapRef, setIsMapInView]);
 
   useEffect(() => {
     if (position) {
@@ -57,6 +71,9 @@ const Map = () => {
   );
   const [locationError, setLocationError] = useState<string>('');
 
+  // Track if we've already shown the location toast to prevent duplicates
+  const hasShownLocationToast = useRef(false);
+
   // Map tile URLs for light and dark themes
   const tileUrls = {
     light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -80,6 +97,12 @@ const Map = () => {
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation([latitude, longitude]);
+
+          // Only show toast once, even in React Strict Mode
+          if (!hasShownLocationToast.current) {
+            toast.success('Location set successfully');
+            hasShownLocationToast.current = true;
+          }
         },
         (error) => {
           // Error is already displayed via locationError state
