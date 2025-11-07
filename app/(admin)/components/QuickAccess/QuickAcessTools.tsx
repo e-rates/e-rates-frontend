@@ -19,6 +19,10 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { User2Icon } from 'lucide-react';
+import { useMapContext } from '../../context/MapContext';
+import { usePathname } from 'next/navigation';
+import CoordinateSearch from './CoordinateSearch';
 
 const QuickAcessTools = () => {
   const [mounted, setMounted] = useState(false);
@@ -26,6 +30,21 @@ const QuickAcessTools = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [clickedIndex, setClickedIndex] = useState<number | null>(null);
   const [items, setItems] = useState(QuickAccessMenuItems);
+  const {
+    toggleGrid,
+    showGrid,
+    toggleBaseMap,
+    showBaseMap,
+    toggleMapLock,
+    isMapLocked,
+  } = useMapContext();
+  const pathname = usePathname();
+
+  // Check if we're on the parcels-map route
+  const isOnParcelsMap = pathname?.includes('/parcels-map');
+
+  // Check if we're on the home page
+  const isOnHomePage = pathname?.includes('/home');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -46,6 +65,27 @@ const QuickAcessTools = () => {
     setClickedIndex(index);
     setActiveIndex(index);
     setTimeout(() => setClickedIndex(null), 300);
+
+    // Execute action if the item has one
+    const item = items[index];
+    if (item.action) {
+      item.action();
+    }
+
+    // Handle Grid toggle
+    if (item.name === 'Grid' && item.requiresContext) {
+      toggleGrid();
+    }
+
+    // Handle BaseMap toggle
+    if (item.name === 'BaseMap' && item.requiresContext) {
+      toggleBaseMap();
+    }
+
+    // Handle LockView toggle
+    if (item.name === 'LockView' && item.requiresContext) {
+      toggleMapLock();
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -66,6 +106,8 @@ const QuickAcessTools = () => {
       <div className="px-1">
         <p className="text-regular-md">Quick Access Tools</p>
       </div>
+
+      {/*Quick Access Items  */}
       {!mounted ? (
         <div className="dark:bg-panel-bg grid h-fit w-full grid-cols-5 place-items-center gap-3 rounded-3xl bg-gray-100 px-3 py-3">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -101,12 +143,24 @@ const QuickAcessTools = () => {
                   const isLeftEdge = index % 5 === 0;
                   const isRightEdge = index % 5 === 4;
 
+                  // Check if Grid, BaseMap, or LockView is active
+                  const isGridActive = item.name === 'Grid' && showGrid;
+                  const isBaseMapActive =
+                    item.name === 'BaseMap' && showBaseMap;
+                  const isLockViewActive =
+                    item.name === 'LockView' && isMapLocked;
+
                   return (
                     <QuickAccessItem
                       key={item.name}
                       item={item}
                       index={index}
-                      isActive={activeIndex === index}
+                      isActive={
+                        activeIndex === index ||
+                        isGridActive ||
+                        isBaseMapActive ||
+                        isLockViewActive
+                      }
                       isHovered={hoveredIndex === index}
                       isClicked={clickedIndex === index}
                       isBottomRow={isBottomRow}
@@ -121,6 +175,45 @@ const QuickAcessTools = () => {
               </SortableContext>
             </Squircle>
           </DndContext>
+        </div>
+      )}
+
+      {/* Coordinate Search - Only visible on parcels-map route */}
+      {isOnParcelsMap && mounted && (
+        <div
+          className="mt-2"
+          style={{
+            animation: 'blurIn 0.4s ease-out forwards',
+          }}
+        >
+          <CoordinateSearch />
+        </div>
+      )}
+
+      {/* Notifications - Only visible on home page */}
+      {isOnHomePage && (
+        <div className="border-border-default border-t-[0.5px] pt-2">
+          <div>
+            <h1 className="text-medium-md tracking-normal">Notifications</h1>
+          </div>
+
+          <div className="bg-elevated-surface border-border-default flex h-[60px] w-full flex-row space-x-2 rounded-[12px] border-[0.5px]">
+            <div className="flex h-full w-[50px] flex-col items-center justify-center rounded-[12px]">
+              <User2Icon />
+            </div>
+            <div className="flex w-full flex-col">
+              {' '}
+              <div className="flex flex-row items-center justify-start space-x-2">
+                <p className="text-body-md tracking-tight">John Kimathi</p>
+                <p className="text-body-sm tracking-tight">Nyeri County</p>
+              </div>
+              <div className="flex h-full flex-col items-start justify-center">
+                <p className="text-regular-md tracking-tight">
+                  Payment received for <span className="">John Kimathi</span>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

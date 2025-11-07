@@ -6,15 +6,8 @@ import { Clock, Filter } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
 export default function HistoryPage() {
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <BlurInLoader isLoading={isLoading}>
+    <BlurInLoader isLoading={false}>
       <div className="w-full p-6">
         <div className="mx-auto max-w-7xl">
           {/* Header */}

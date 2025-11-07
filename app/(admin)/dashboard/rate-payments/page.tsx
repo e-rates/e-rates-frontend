@@ -2,19 +2,12 @@
 
 import React from 'react';
 import { BlurInLoader } from '@/app/components/blur-in-loader';
-import { Search, Filter, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
 export default function RatePaymentsPage() {
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <BlurInLoader isLoading={isLoading}>
+    <BlurInLoader isLoading={false}>
       <div className="w-full p-6">
         <div className="mx-auto max-w-7xl">
           {/* Header */}
@@ -27,62 +20,21 @@ export default function RatePaymentsPage() {
                 Manage and track all rate payment records
               </p>
             </div>
-            <Button className="gap-2">
+            <Button className="gap-2 bg-teal-500 hover:bg-teal-600">
               <Download className="h-4 w-4" />
               Export
             </Button>
           </div>
 
-          {/* Search and Filter Bar */}
-          <div className="bg-card-bg border-border-default mb-6 flex gap-4 rounded-lg border p-4">
-            <div className="relative flex-1">
-              <Search className="text-text-tertiary absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search by parcel ID, owner name..."
-                className="bg-main-bg border-border-default text-text-primary placeholder:text-text-tertiary focus:border-primary w-full rounded-lg border py-2 pr-4 pl-10 text-sm focus:outline-none"
-              />
-            </div>
-            <Button variant="outline" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
-          </div>
-
-          {/* Payments Table */}
-          <div className="bg-card-bg border-border-default overflow-hidden rounded-lg border">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-hover-surface border-border-default border-b">
-                  <tr>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Parcel ID
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Owner
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Amount
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Status
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="text-text-secondary px-6 py-12 text-center text-sm"
-                    >
-                      No payment records found. Data integration coming soon...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          {/* Empty State */}
+          <div className="bg-card-bg border-border-default flex min-h-[400px] flex-col items-center justify-center rounded-lg border p-12">
+            <div className="text-center">
+              <h3 className="text-text-primary mb-2 text-lg font-semibold">
+                No Payment Records
+              </h3>
+              <p className="text-text-secondary text-sm">
+                Connect to the API to view rate payment records
+              </p>
             </div>
           </div>
         </div>

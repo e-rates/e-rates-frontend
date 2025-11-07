@@ -10,6 +10,13 @@ interface MapContextType {
   resetZoom: () => void;
   isMapInView: boolean;
   setIsMapInView: (inView: boolean) => void;
+  showGrid: boolean;
+  toggleGrid: () => void;
+  triggerGridRedraw: () => void;
+  showBaseMap: boolean;
+  toggleBaseMap: () => void;
+  isMapLocked: boolean;
+  toggleMapLock: () => void;
 }
 
 const MapContext = createContext<MapContextType | null>(null);
@@ -17,6 +24,10 @@ const MapContext = createContext<MapContextType | null>(null);
 export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const mapRef = useRef<LeafletMap | null>(null);
   const [isMapInView, setIsMapInView] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [gridRedrawTrigger, setGridRedrawTrigger] = useState(0);
+  const [showBaseMap, setShowBaseMap] = useState(true);
+  const [isMapLocked, setIsMapLocked] = useState(false);
 
   const zoomIn = () => {
     if (mapRef.current && isMapInView) {
@@ -36,6 +47,22 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const toggleGrid = () => {
+    setShowGrid((prev) => !prev);
+  };
+
+  const triggerGridRedraw = () => {
+    setGridRedrawTrigger((prev) => prev + 1);
+  };
+
+  const toggleBaseMap = () => {
+    setShowBaseMap((prev) => !prev);
+  };
+
+  const toggleMapLock = () => {
+    setIsMapLocked((prev) => !prev);
+  };
+
   return (
     <MapContext.Provider
       value={{
@@ -45,6 +72,13 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         resetZoom,
         isMapInView,
         setIsMapInView,
+        showGrid,
+        toggleGrid,
+        triggerGridRedraw,
+        showBaseMap,
+        toggleBaseMap,
+        isMapLocked,
+        toggleMapLock,
       }}
     >
       {children}

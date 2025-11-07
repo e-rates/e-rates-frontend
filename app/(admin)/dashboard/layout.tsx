@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import MenuItem from '@/app/(admin)/components/menu/MenuItem';
 import QuickAcessTools from '../components/QuickAccess/QuickAcessTools';
 import QuickToolsBar from '../components/QuickTools/QuickToolsBar';
@@ -16,6 +16,37 @@ export default function DashboardLayout({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sidebarWidth = isMenuCollapsed ? 72 : 200;
 
+  // Load sidebar state from localStorage on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState !== null) {
+      setIsMenuCollapsed(savedState === 'true');
+    }
+  }, []);
+
+  // Save sidebar state to localStorage whenever it changes
+  const handleToggleCollapse = () => {
+    const newState = !isMenuCollapsed;
+    setIsMenuCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', String(newState));
+
+    // Trigger multiple resize events to ensure map updates properly
+    // First immediately, then after animation completes
+    window.dispatchEvent(new Event('resize'));
+
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
+
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 350);
+
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 550);
+  };
+
   return (
     <MapProvider>
       <div className="bg-panel-bg sticky top-[60px] flex h-[calc(100vh-60px)] overflow-hidden">
@@ -30,7 +61,7 @@ export default function DashboardLayout({
         >
           <MenuItem
             isCollapsed={isMenuCollapsed}
-            onToggleCollapse={() => setIsMenuCollapsed(!isMenuCollapsed)}
+            onToggleCollapse={handleToggleCollapse}
           />
         </div>
 

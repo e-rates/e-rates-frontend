@@ -6,15 +6,8 @@ import { BarChart3, Download, Calendar } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
 export default function ReportsPage() {
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <BlurInLoader isLoading={isLoading}>
+    <BlurInLoader isLoading={false}>
       <div className="box-border h-full w-full max-w-full overflow-x-hidden p-6">
         <div className="box-border w-full max-w-full">
           {/* Header */}

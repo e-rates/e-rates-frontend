@@ -6,10 +6,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from 'next-themes';
 import { ParcelLayer } from '@/app/(admin)/components/map/ParcelLayer';
+import GridOverlay from '@/app/(admin)/components/map/GridOverlay';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
+import { GlobeLock } from 'lucide-react';
 
-// Fix for default marker icons in Next.js
+// Leaflet icon fix for Next.js
 const icon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl:
@@ -23,7 +25,6 @@ const icon = L.icon({
 
 L.Marker.prototype.options.icon = icon;
 
-// Component to update map view when location changes
 function LocationMarker({ position }: { position: [number, number] | null }) {
   const map = useMap();
   const { mapRef, setIsMapInView } = useMapContext();
@@ -32,6 +33,25 @@ function LocationMarker({ position }: { position: [number, number] | null }) {
     if (map) {
       mapRef.current = map;
       setIsMapInView(true);
+
+      const handleResize = () => {
+        map.invalidateSize();
+
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 50);
+
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 400);
+      };
+
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        setIsMapInView(false);
+        window.removeEventListener('resize', handleResize);
+      };
     }
 
     return () => {
@@ -62,20 +82,44 @@ function LocationMarker({ position }: { position: [number, number] | null }) {
   );
 }
 
+function MapLockHandler({ isLocked }: { isLocked: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (isLocked) {
+      // Disable dragging
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+      map.scrollWheelZoom.enable(); // Keep scroll zoom enabled
+      map.boxZoom.disable();
+      map.keyboard.disable();
+    } else {
+      // Enable all interactions
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.doubleClickZoom.enable();
+      map.scrollWheelZoom.enable();
+      map.boxZoom.enable();
+      map.keyboard.enable();
+    }
+  }, [isLocked, map]);
+
+  return null;
+}
+
 const Map = () => {
   const { theme } = useTheme();
+  const { showGrid, showBaseMap, isMapLocked } = useMapContext();
   // Default center - Harare, Zimbabwe coordinates
   const defaultCenter: [number, number] = [-17.8252, 31.0335];
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
   const [locationError, setLocationError] = useState<string>('');
+  const hasShownToast = useRef(false);
 
-  // Track if we've already shown the location toast to prevent duplicates
-  const hasShownLocationToast = useRef(false);
-
-  // Map tile URLs for light and dark themes
-  const tileUrls = {
+  const mapTiles = {
     light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     dark: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
   };
@@ -87,25 +131,22 @@ const Map = () => {
   };
 
   const isDark = theme === 'dark';
-  const tileUrl = isDark ? tileUrls.dark : tileUrls.light;
+  const tileUrl = isDark ? mapTiles.dark : mapTiles.light;
   const attribution = isDark ? tileAttributions.dark : tileAttributions.light;
 
   useEffect(() => {
-    // Get user's current location
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation([latitude, longitude]);
 
-          // Only show toast once, even in React Strict Mode
-          if (!hasShownLocationToast.current) {
+          if (!hasShownToast.current) {
             toast.success('Location set successfully');
-            hasShownLocationToast.current = true;
+            hasShownToast.current = true;
           }
         },
         (error) => {
-          // Error is already displayed via locationError state
           setLocationError(error.message);
         },
         {
@@ -132,6 +173,13 @@ const Map = () => {
         </div>
       )}
 
+      {isMapLocked && (
+        <div className="absolute top-4 right-4 z-1000 flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
+          <GlobeLock size={16} />
+          <span>Map Locked</span>
+        </div>
+      )}
+
       <MapContainer
         center={center}
         zoom={zoom}
@@ -139,19 +187,16 @@ const Map = () => {
         style={{ height: '100%', width: '100%' }}
         className="border-default z-0 bg-rose-300"
       >
-        {/* Map tiles that change with theme */}
-        <TileLayer
-          key={`base-${theme}`} // Force re-render when theme changes
-          attribution={attribution}
-          url={tileUrl}
-        />
+        {showBaseMap && (
+          <TileLayer
+            key={`base-${theme}`}
+            attribution={attribution}
+            url={tileUrl}
+          />
+        )}
 
-        {/* Grid overlay */}
-
-        {/* Load and display parcels from shapefile */}
-        {/* <ParcelLayer shapefileUrl="/data/parcels.zip" /> */}
-
-        {/* User location marker with auto-zoom */}
+        <GridOverlay visible={showGrid} />
+        <MapLockHandler isLocked={isMapLocked} />
         <LocationMarker position={userLocation} />
       </MapContainer>
     </div>

@@ -2,24 +2,17 @@
 
 import React from 'react';
 import { BlurInLoader } from '@/app/components/blur-in-loader';
-import { UserX, AlertCircle, Phone, Mail } from 'lucide-react';
+import { UserX, Download } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
 export default function DefaultersPage() {
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <BlurInLoader isLoading={isLoading}>
+    <BlurInLoader isLoading={false}>
       <div className="w-full p-6">
         <div className="mx-auto max-w-7xl">
           {/* Header */}
-          <div className="mb-8">
-            <div className="mb-4 flex items-center gap-3">
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <div className="bg-error/10 text-error rounded-lg p-3">
                 <UserX className="h-6 w-6" />
               </div>
@@ -32,64 +25,25 @@ export default function DefaultersPage() {
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Alert Banner */}
-          <div className="bg-error/10 border-error/20 mb-6 flex items-start gap-3 rounded-lg border p-4">
-            <AlertCircle className="text-error h-5 w-5 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-error mb-1 text-sm font-semibold">
-                156 Accounts Overdue
-              </h3>
-              <p className="text-text-secondary text-xs">
-                Total outstanding amount: $23,450. Last updated 2 hours ago.
-              </p>
-            </div>
-            <Button size="sm" variant="outline">
-              Send Reminders
+            <Button className="gap-2 bg-teal-500 hover:bg-teal-600">
+              <Download className="h-4 w-4" />
+              Export
             </Button>
           </div>
 
-          {/* Defaulters List */}
-          <div className="bg-card-bg border-border-default overflow-hidden rounded-lg border">
-            <div className="border-border-default border-b p-6">
-              <h2 className="text-text-primary text-xl font-semibold">
-                Overdue Accounts
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-hover-surface border-border-default border-b">
-                  <tr>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Owner
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Parcel ID
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Amount Due
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Days Overdue
-                    </th>
-                    <th className="text-text-secondary px-6 py-3 text-left text-xs font-medium uppercase">
-                      Contact
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="text-text-secondary px-6 py-12 text-center text-sm"
-                    >
-                      No defaulter records found. Data integration coming
-                      soon...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          {/* Empty State */}
+          <div className="bg-card-bg border-border-default flex min-h-[400px] flex-col items-center justify-center rounded-lg border p-12">
+            <div className="text-center">
+              <div className="bg-error/10 text-error mx-auto mb-4 w-fit rounded-full p-4">
+                <UserX className="h-8 w-8" />
+              </div>
+              <h3 className="text-text-primary mb-2 text-lg font-semibold">
+                No Defaulter Records
+              </h3>
+              <p className="text-text-secondary text-sm">
+                Connect to the API to view defaulter records and overdue
+                payments
+              </p>
             </div>
           </div>
         </div>

@@ -14,15 +14,8 @@ import { Button } from '@/app/components/ui/button';
 import { ThemeToggle } from '@/app/components/theme-toggle';
 
 export default function SettingsPage() {
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <BlurInLoader isLoading={isLoading}>
+    <BlurInLoader isLoading={false}>
       <div className="w-full p-6">
         <div className="mx-auto max-w-4xl">
           {/* Header */}

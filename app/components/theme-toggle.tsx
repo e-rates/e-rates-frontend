@@ -8,6 +8,7 @@ import { Squircle } from './ui/squircle';
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { theme, setTheme } = useTheme();
 
   // useEffect only runs on the client, so now we can safely show the UI
@@ -29,14 +30,17 @@ export function ThemeToggle() {
   const handleMouseLeave = () => setIsPressed(false);
 
   const handleClick = async (event: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent multiple transitions at once
+    if (isTransitioning) return;
+
     const x = event.clientX;
     const y = event.clientY;
 
-    // Calculate the maximum distance from click point to corner
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    );
+    const endRadius =
+      Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      ) * 1.5;
 
     // @ts-ignore - View Transitions API
     if (!document.startViewTransition) {
@@ -44,27 +48,38 @@ export function ThemeToggle() {
       return;
     }
 
-    // @ts-ignore
-    const transition = document.startViewTransition(() => {
-      setTheme(theme === 'dark' ? 'light' : 'dark');
-    });
+    setIsTransitioning(true);
 
-    await transition.ready;
+    try {
+      // @ts-ignore
+      const transition = document.startViewTransition(() => {
+        setTheme(theme === 'dark' ? 'light' : 'dark');
+      });
 
-    // Always expand from button - simple and consistent
-    document.documentElement.animate(
-      {
-        clipPath: [
-          `circle(0px at ${x}px ${y}px)`,
-          `circle(${endRadius}px at ${x}px ${y}px)`,
-        ],
-      },
-      {
-        duration: 1000,
-        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-        pseudoElement: '::view-transition-new(root)',
-      }
-    );
+      await transition.ready;
+
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 1000,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      );
+
+      // Wait for transition to finish
+      await transition.finished;
+    } catch (error) {
+      // Silently handle transition abort errors
+      console.debug('Theme transition aborted:', error);
+    } finally {
+      setIsTransitioning(false);
+    }
   };
 
   if (!mounted) {

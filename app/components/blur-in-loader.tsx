@@ -2,6 +2,7 @@
 
 import { useSpring, animated } from '@react-spring/web';
 import { useEffect, useState } from 'react';
+import { LoadingSpinner } from './loading-spinner';
 
 interface BlurInLoaderProps {
   isLoading: boolean;
@@ -75,13 +76,12 @@ export function BlurInLoader({
           className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
         >
           {loadingContent || (
-            <div className="flex flex-col items-center gap-3">
-              {/* Spinning loader */}
-              <div className="border-primary h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"></div>
-              <p className="text-text-secondary text-sm font-medium">
-                Loading...
-              </p>
-            </div>
+            <LoadingSpinner
+              size={48}
+              variant="gradient"
+              text="Loading..."
+              color="rgb(59, 130, 246)"
+            />
           )}
         </animated.div>
       )}

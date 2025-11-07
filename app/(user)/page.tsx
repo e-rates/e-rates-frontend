@@ -1,105 +1,35 @@
-import { Button } from '@/app/components/ui/button';
-import { Squircle } from '@/app/components/ui/squircle';
+import React from 'react';
+import Assets from './components/Assets/Assets';
+import History from './components/History/History';
+import CoordinateGrid from '@/app/components/map/CoordinateGrid';
 
 export default function UserHome() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="text-center">
-        <h1 className="text-text-primary mb-4 text-4xl font-bold">
-          Welcome to E-Rates
-        </h1>
-        <p className="text-text-secondary mb-8 text-xl">
-          Your exchange rate management system
-        </p>
-
-        <div className="mb-12 flex justify-center gap-3">
-          <Button>Default Button</Button>
-          <Button variant="secondary">Secondary</Button>
-          <Button variant="destructive">Destructive</Button>
-          <Button variant="outline">Outline</Button>
-          <Button variant="ghost">Ghost</Button>
+    <div className="bg-elevated-surface h-screen w-full space-y-2 px-2 pt-2 md:grid md:h-[calc(100vh-124px)] md:grid-cols-2">
+      {/* Map Container */}
+      <div className="flex w-full flex-col items-center md:h-full">
+        <div className="relative min-h-[200px] w-full max-w-5xl overflow-hidden md:h-full">
+          <CoordinateGrid
+            minLat={-1.3}
+            maxLat={-1.25}
+            minLon={36.8}
+            maxLon={36.85}
+            gridDivisions={5}
+            gridOpacity={0.1}
+            labelType="latlon"
+          />
         </div>
+      </div>
 
-        <div className="mb-12">
-          <h2 className="text-text-primary mb-6 text-2xl font-bold">
-            Apple-Style Smooth Corners (Superellipse Formula)
-          </h2>
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <Squircle
-              smoothing="ios"
-              className="bg-primary flex h-40 w-40 items-center justify-center text-center"
-            >
-              <span className="font-semibold text-white">
-                iOS Style
-                <br />
-                0.6
-              </span>
-            </Squircle>
-
-            <Squircle
-              smoothing="moderate"
-              className="bg-success flex h-40 w-40 items-center justify-center text-center"
-            >
-              <span className="font-semibold text-white">
-                Moderate
-                <br />
-                0.4
-              </span>
-            </Squircle>
-
-            <Squircle
-              smoothing="subtle"
-              className="bg-warning flex h-40 w-40 items-center justify-center text-center"
-            >
-              <span className="font-semibold text-white">
-                Subtle
-                <br />
-                0.2
-              </span>
-            </Squircle>
-
-            <Squircle
-              smoothing="extreme"
-              className="bg-info flex h-40 w-40 items-center justify-center text-center"
-            >
-              <span className="font-semibold text-white">
-                Extreme
-                <br />
-                0.8
-              </span>
-            </Squircle>
-          </div>
-          <p className="text-text-tertiary mt-4 text-sm">
-            Using proper superellipse formula - matches Figma's corner smoothing
-            exactly
-          </p>
+      <div className="md:h-full">
+        {' '}
+        {/* Assets */}
+        <div>
+          <Assets />
         </div>
-
-        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="bg-card-bg border-border-default rounded-lg border p-6">
-            <h3 className="text-text-primary mb-2 text-lg font-semibold">
-              Current Rates
-            </h3>
-            <p className="text-text-secondary">
-              View the latest exchange rates
-            </p>
-          </div>
-
-          <div className="bg-card-bg border-border-default rounded-lg border p-6">
-            <h3 className="text-text-primary mb-2 text-lg font-semibold">
-              Calculator
-            </h3>
-            <p className="text-text-secondary">
-              Calculate currency conversions
-            </p>
-          </div>
-
-          <div className="bg-card-bg border-border-default rounded-lg border p-6">
-            <h3 className="text-text-primary mb-2 text-lg font-semibold">
-              History
-            </h3>
-            <p className="text-text-secondary">View historical rate data</p>
-          </div>
+        {/* History */}
+        <div>
+          <History />
         </div>
       </div>
     </div>

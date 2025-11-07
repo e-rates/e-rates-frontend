@@ -10,7 +10,6 @@ export interface ParcelFeature {
     [key: string]: any;
     parcelId?: string;
     ownerId?: string;
-    // Add other properties from your shapefile
   };
 }
 
@@ -19,11 +18,6 @@ export interface ParcelCollection {
   features: ParcelFeature[];
 }
 
-/**
- * Load shapefile from a zip file containing .shp, .dbf, .prj files
- * @param zipFileUrl - URL or path to the zip file
- * @returns GeoJSON FeatureCollection
- */
 export async function loadShapefile(
   zipFileUrl: string
 ): Promise<ParcelCollection> {
@@ -36,11 +30,6 @@ export async function loadShapefile(
   }
 }
 
-/**
- * Load shapefile from individual files (browser-based)
- * @param files - Object containing .shp, .dbf, .prj file buffers
- * @returns GeoJSON FeatureCollection
- */
 export async function loadShapefileFromFiles(files: {
   shp: ArrayBuffer;
   dbf: ArrayBuffer;
@@ -58,12 +47,6 @@ export async function loadShapefileFromFiles(files: {
   }
 }
 
-/**
- * Style a parcel based on payment status
- * @param feature - GeoJSON feature
- * @param paymentStatus - Payment status object from your API
- * @returns Leaflet style object
- */
 export function getParcelStyle(
   feature: ParcelFeature,
   paymentStatus?: { isPaid: boolean; amount?: number }
@@ -71,21 +54,18 @@ export function getParcelStyle(
   const isPaid = paymentStatus?.isPaid || false;
 
   return {
-    fillColor: isPaid ? '#2bc76f' : '#ff4757', // Green if paid, Red if unpaid
+    fillColor: isPaid ? '#2bc76f' : '#ff4757',
     fillOpacity: 0.6,
-    color: isPaid ? '#1fa55a' : '#d63447', // Border color
+    color: isPaid ? '#1fa55a' : '#d63447',
     weight: 2,
     opacity: 1,
   };
 }
 
-/**
- * Get hover/highlight style
- */
 export function getHighlightStyle() {
   return {
     fillOpacity: 0.8,
     weight: 3,
-    color: '#00ffd1', // Your primary color
+    color: '#00ffd1',
   };
 }
