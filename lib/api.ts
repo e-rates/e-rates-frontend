@@ -3,7 +3,7 @@
  */
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  process.env.NEXT_PUBLIC_API_URL || 'http://192.168.0.104:8001/api';
 
 export class ApiError extends Error {
   constructor(

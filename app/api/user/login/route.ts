@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await axios.post<TokenResponse>(
-      'http://127.0.0.1:8000/api/token/phone/',
+      'http://127.0.0.1:8001/api/token/phone/',
       {
         phone: phonenumber,
         password,
