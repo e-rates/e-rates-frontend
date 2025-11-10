@@ -63,7 +63,6 @@ const QuickAcessTools = () => {
 
   const handleClick = (index: number) => {
     setClickedIndex(index);
-    setActiveIndex(index);
     setTimeout(() => setClickedIndex(null), 300);
 
     // Execute action if the item has one
@@ -75,17 +74,23 @@ const QuickAcessTools = () => {
     // Handle Grid toggle
     if (item.name === 'Grid' && item.requiresContext) {
       toggleGrid();
+      return;
     }
 
     // Handle BaseMap toggle
     if (item.name === 'BaseMap' && item.requiresContext) {
       toggleBaseMap();
+      return;
     }
 
     // Handle LockView toggle
     if (item.name === 'LockView' && item.requiresContext) {
       toggleMapLock();
+      return;
     }
+
+    // For non-toggle items, set active index
+    setActiveIndex(index);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -156,10 +161,13 @@ const QuickAcessTools = () => {
                       item={item}
                       index={index}
                       isActive={
-                        activeIndex === index ||
                         isGridActive ||
                         isBaseMapActive ||
-                        isLockViewActive
+                        isLockViewActive ||
+                        (activeIndex === index &&
+                          item.name !== 'Grid' &&
+                          item.name !== 'BaseMap' &&
+                          item.name !== 'LockView')
                       }
                       isHovered={hoveredIndex === index}
                       isClicked={clickedIndex === index}

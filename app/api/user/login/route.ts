@@ -6,16 +6,16 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface TokenResponse {
+  access: string;
+  refresh: string;
+}
+
 export interface LoginResponse {
   success: boolean;
   data?: {
-    user: {
-      id: string;
-      phonenumber: string;
-      name: string;
-      email?: string;
-    };
-    token: string;
+    access: string;
+    refresh: string;
   };
   message?: string;
   error?: string;
@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
     const body: LoginRequest = await request.json();
     const { phonenumber, password } = body;
 
-    // Validate input
     if (!phonenumber || !password) {
       return NextResponse.json(
         {
@@ -37,13 +36,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Make API call to your backend
-    const backendUrl =
-      process.env.BACKEND_API_URL || 'http://localhost:8000/api';
-    const response = await axios.post(
-      `${backendUrl}/auth/login`,
+    const response = await axios.post<TokenResponse>(
+      'http://127.0.0.1:8000/api/token/phone/',
       {
-        phonenumber,
+        phone: phonenumber,
         password,
       },
       {
@@ -53,18 +49,26 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Return the backend response to the frontend
-    return NextResponse.json(response.data, { status: response.status });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          access: response.data.access,
+          refresh: response.data.refresh,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Login error:', error);
 
-    // Handle axios errors
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
       const errorMessage =
+        error.response?.data?.detail ||
         error.response?.data?.error ||
         error.response?.data?.message ||
-        'An error occurred during login';
+        'Invalid credentials';
 
       return NextResponse.json(
         {
@@ -75,7 +79,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Handle other errors
     return NextResponse.json(
       {
         success: false,

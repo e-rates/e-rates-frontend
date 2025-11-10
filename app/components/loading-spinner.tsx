@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react';
 
 interface LoadingSpinnerProps {
   /**
-   * Size of the spinner in pixels
+   * Size of the spinner in pixels or preset size
    * @default 48
    */
-  size?: number;
+  size?: number | 'sm' | 'md' | 'lg';
   /**
    * Color of the spinner
    * @default 'currentColor'
@@ -40,6 +40,22 @@ export function LoadingSpinner({
   text,
   speed = 1,
 }: LoadingSpinnerProps) {
+  // Convert size string to number
+  const getSize = (size: number | 'sm' | 'md' | 'lg'): number => {
+    if (typeof size === 'number') return size;
+    switch (size) {
+      case 'sm':
+        return 20;
+      case 'md':
+        return 32;
+      case 'lg':
+        return 48;
+      default:
+        return 48;
+    }
+  };
+
+  const actualSize = getSize(size);
   const [rotation, setRotation] = useState(0);
 
   // Continuous rotation animation
@@ -75,12 +91,12 @@ export function LoadingSpinner({
       <div className="flex flex-col items-center gap-3">
         <animated.div
           style={{
-            width: size,
-            height: size,
+            width: actualSize,
+            height: actualSize,
             scale: pulseSpring.scale,
             opacity: pulseSpring.opacity,
             background: `linear-gradient(135deg, ${color}, transparent)`,
-            boxShadow: `0 0 ${size / 2}px ${color}`,
+            boxShadow: `0 0 ${actualSize / 2}px ${color}`,
           }}
           className="rounded-full"
         />
@@ -105,8 +121,8 @@ export function LoadingSpinner({
         <animated.div
           style={{
             scale: dotAnimation.scale,
-            width: size / 4,
-            height: size / 4,
+            width: actualSize / 4,
+            height: actualSize / 4,
             backgroundColor: color,
           }}
           className="rounded-full"
@@ -140,8 +156,8 @@ export function LoadingSpinner({
           <div
             className="rounded-full"
             style={{
-              width: size,
-              height: size,
+              width: actualSize,
+              height: actualSize,
               background: `conic-gradient(from 0deg, transparent, ${color}, transparent)`,
               position: 'relative',
             }}
@@ -168,8 +184,8 @@ export function LoadingSpinner({
         style={{
           ...scaleSpring,
           rotate: rotate.to((r) => `${r}deg`),
-          width: size,
-          height: size,
+          width: actualSize,
+          height: actualSize,
         }}
       >
         <div
@@ -177,7 +193,7 @@ export function LoadingSpinner({
           style={{
             width: '100%',
             height: '100%',
-            border: `${size / 16}px solid transparent`,
+            border: `${actualSize / 16}px solid transparent`,
             borderTopColor: color,
             borderRightColor: 'transparent',
             boxSizing: 'border-box',

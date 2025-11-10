@@ -3,7 +3,7 @@
 import { Toaster, resolveValue, Toast } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import { useSpring, animated } from '@react-spring/web';
-import { CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 // Custom animated toast component using React Spring
 function AnimatedToast({ toast }: { toast: Toast }) {
@@ -30,16 +30,23 @@ function AnimatedToast({ toast }: { toast: Toast }) {
 
   // Determine which icon to show based on toast type
   const getIcon = () => {
-    switch (toast.type) {
-      case 'success':
-        return <CheckCircle2 className="h-5 w-5 text-[#2bc76f]" />;
-      case 'error':
-        return <XCircle className="h-5 w-5 text-[#ff4757]" />;
-      case 'loading':
-        return <Info className="h-5 w-5 text-[#3742fa]" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-[#ffa502]" />;
+    if (toast.type === 'success') {
+      return <CheckCircle2 className="h-5 w-5 text-[#2bc76f]" />;
     }
+    if (toast.type === 'error') {
+      return <XCircle className="h-5 w-5 text-[#ff4757]" />;
+    }
+    if (toast.type === 'loading') {
+      return (
+        <Loader2
+          className="h-5 w-5 text-[#3742fa]"
+          style={{
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+      );
+    }
+    return <AlertCircle className="h-5 w-5 text-[#ffa502]" />;
   };
 
   return (

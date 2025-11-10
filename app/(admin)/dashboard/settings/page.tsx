@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { ThemeToggle } from '@/app/components/theme-toggle';
+import AdminProfile from '../../components/AdminProfile';
 
 export default function SettingsPage() {
   return (

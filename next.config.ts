@@ -27,23 +27,15 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      ...(isDevelopment
-        ? [
-            {
-              source: '/:path*',
-              headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }],
-            },
-          ]
-        : []),
     ];
   },
 
   async rewrites() {
     return [
-      // {
-      //   source: '/python-api/:path*',
-      //   destination: 'http://localhost:8000/:path*',
-      // },
+      {
+        source: '/api/:path*',
+        destination: 'http://127.0.0.1:8000/api/:path*', // or 'http://localhost:8000/api/:path*'
+      },
     ];
   },
 };

@@ -3,10 +3,10 @@
 import { User2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
-import { useUserAuth } from '../../context/UserAuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const Account = () => {
-  const { logout } = useUserAuth();
+  const { logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {

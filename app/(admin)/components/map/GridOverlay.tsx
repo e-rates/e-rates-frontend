@@ -13,17 +13,31 @@ interface GridOverlayProps {
 const GridOverlay: React.FC<GridOverlayProps> = ({
   visible,
   gridColor = '#3B82F6',
-  gridOpacity = 0.3,
+  gridOpacity = 0.4,
 }) => {
   const map = useMap();
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      const container = map.getPane('gridPane');
+      if (container) {
+        const existingSvg = container.querySelector('svg');
+        if (existingSvg) {
+          existingSvg.style.display = 'none';
+        }
+      }
+      return;
+    }
 
     if (!map.getPane('gridPane')) {
       const gridPane = map.createPane('gridPane');
-      gridPane.style.zIndex = '400';
+      gridPane.style.zIndex = '650';
       gridPane.style.pointerEvents = 'none';
+      gridPane.style.position = 'absolute';
+      gridPane.style.top = '0';
+      gridPane.style.left = '0';
+      gridPane.style.width = '100%';
+      gridPane.style.height = '100%';
     }
 
     const svg = L.svg({ pane: 'gridPane' });
@@ -33,14 +47,33 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
       const container = map.getPane('gridPane');
       if (!container) return;
 
+      // Completely remove and recreate the SVG element
       const existingSvg = container.querySelector('svg');
       if (existingSvg) {
-        existingSvg.innerHTML = '';
+        existingSvg.remove();
       }
+
+      // Create fresh SVG element
+      const mapSize = map.getSize();
+      const svgElement = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'svg'
+      );
+      svgElement.setAttribute('width', mapSize.x.toString());
+      svgElement.setAttribute('height', mapSize.y.toString());
+      svgElement.setAttribute('viewBox', `0 0 ${mapSize.x} ${mapSize.y}`);
+      svgElement.style.position = 'absolute';
+      svgElement.style.top = '0';
+      svgElement.style.left = '0';
+      svgElement.style.pointerEvents = 'none';
+      container.appendChild(svgElement);
 
       const bounds = map.getBounds();
       const zoom = map.getZoom();
-      const mapSize = map.getSize();
+
+      console.log('Map center:', map.getCenter());
+      console.log('Map bounds:', bounds.toString());
+      console.log('Map zoom:', zoom);
 
       let gridSpacingLat: number;
       let gridSpacingLng: number;
@@ -90,6 +123,14 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
       let latLineCount = 0;
       let lngLineCount = 0;
 
+      console.log('Starting grid line creation. Bounds:', {
+        south,
+        north,
+        west,
+        east,
+      });
+      console.log('Grid spacing:', { gridSpacingLat, gridSpacingLng });
+
       for (let lat = south; lat <= north; lat += gridSpacingLat) {
         const start = map.latLngToLayerPoint([lat, west]);
         const end = map.latLngToLayerPoint([lat, east]);
@@ -107,7 +148,7 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
         line.setAttribute('opacity', adjustedOpacity.toString());
         line.setAttribute('stroke-dasharray', '5,5');
 
-        existingSvg?.appendChild(line);
+        svgElement.appendChild(line);
 
         const leftLabelPoint = map.latLngToLayerPoint([lat, bounds.getWest()]);
         if (
@@ -127,7 +168,7 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
           leftText.setAttribute('dominant-baseline', 'middle');
           leftText.setAttribute('class', 'drop-shadow-sm');
           leftText.textContent = `${lat.toFixed(4)}°`;
-          existingSvg?.appendChild(leftText);
+          svgElement.appendChild(leftText);
         }
 
         const rightLabelPoint = map.latLngToLayerPoint([lat, bounds.getEast()]);
@@ -149,11 +190,13 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
           rightText.setAttribute('dominant-baseline', 'middle');
           rightText.setAttribute('class', 'drop-shadow-sm');
           rightText.textContent = `${lat.toFixed(4)}°`;
-          existingSvg?.appendChild(rightText);
+          svgElement.appendChild(rightText);
         }
 
         latLineCount++;
       }
+
+      console.log('Created', latLineCount, 'latitude lines');
 
       for (let lng = west; lng <= east; lng += gridSpacingLng) {
         const start = map.latLngToLayerPoint([south, lng]);
@@ -172,7 +215,7 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
         line.setAttribute('opacity', adjustedOpacity.toString());
         line.setAttribute('stroke-dasharray', '5,5');
 
-        existingSvg?.appendChild(line);
+        svgElement.appendChild(line);
 
         const topLabelPoint = map.latLngToLayerPoint([bounds.getNorth(), lng]);
         if (
@@ -192,7 +235,7 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
           topText.setAttribute('text-anchor', 'middle');
           topText.setAttribute('class', 'drop-shadow-sm');
           topText.textContent = `${lng.toFixed(4)}°`;
-          existingSvg?.appendChild(topText);
+          svgElement.appendChild(topText);
         }
 
         const bottomLabelPoint = map.latLngToLayerPoint([
@@ -216,20 +259,36 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
           bottomText.setAttribute('text-anchor', 'middle');
           bottomText.setAttribute('class', 'drop-shadow-sm');
           bottomText.textContent = `${lng.toFixed(4)}°`;
-          existingSvg?.appendChild(bottomText);
+          svgElement.appendChild(bottomText);
         }
 
         lngLineCount++;
       }
+
+      console.log('Created', lngLineCount, 'longitude lines');
+      console.log('Total grid elements in SVG:', svgElement.children.length);
     };
 
     // Initial draw
     drawGrid();
 
-    // Only redraw on zoom changes and resize events
-    // Remove moveend to prevent redraw on every pan
-    map.on('zoomend', drawGrid);
-    map.on('resize', drawGrid);
+    // Redraw on zoom, pan, and resize events
+    const handleZoom = () => {
+      console.log('Grid redrawing on zoom');
+      drawGrid();
+    };
+    const handleMove = () => {
+      console.log('Grid redrawing on move');
+      drawGrid();
+    };
+    const handleResize = () => {
+      console.log('Grid redrawing on resize');
+      drawGrid();
+    };
+
+    map.on('zoomend', handleZoom);
+    map.on('moveend', handleMove);
+    map.on('resize', handleResize);
 
     // Listen for window resize events (for sidebar toggle)
     const handleWindowResize = () => {
@@ -243,8 +302,9 @@ const GridOverlay: React.FC<GridOverlayProps> = ({
 
     // Cleanup
     return () => {
-      map.off('zoomend', drawGrid);
-      map.off('resize', drawGrid);
+      map.off('zoomend', handleZoom);
+      map.off('moveend', handleMove);
+      map.off('resize', handleResize);
       window.removeEventListener('resize', handleWindowResize);
       svg.remove();
     };

@@ -16,21 +16,19 @@ import MobileSettings from './components/settings/settings';
 import Account from './components/Account/account';
 import { UserAuthProvider, useUserAuth } from './context/UserAuthContext';
 import { FullPageLoader } from '../components/loading-spinner';
+import { useAuth } from '@/hooks/useAuth';
 
 function UserLayoutContent({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, loading } = useUserAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  // Authentication check disabled - allows access without login
-  /*
   useEffect(() => {
-    if (!loading && !isAuthenticated && pathname !== '/account') {
+    if (!isLoading && !isAuthenticated && pathname !== '/account') {
       router.push('/account');
     }
-  }, [isAuthenticated, loading, pathname, router]);
-  */
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
@@ -54,16 +52,18 @@ function UserLayoutContent({ children }: { children: React.ReactNode }) {
     key: pathname,
   });
 
-  if (loading) {
+  if (isLoading) {
     return <FullPageLoader text="Authenticating..." variant="gradient" />;
   }
 
-  // Authentication check disabled - allows access without login
-  /*
   if (!isAuthenticated && pathname !== '/account') {
     return null;
   }
-  */
+
+  // Special layout for account/login page - no navigation
+  if (pathname === '/account') {
+    return <animated.main style={pageStyles}>{children}</animated.main>;
+  }
 
   return (
     <div className="w-100vw relative m-0 min-h-screen p-0">
@@ -72,7 +72,7 @@ function UserLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-all duration-500" />
       )}
 
-      <nav className="relative z-50">
+      <nav className="sticky top-0 z-50 bg-white dark:bg-neutral-900">
         <div className="flex h-[60px] w-full flex-row items-center justify-between px-2 md:justify-center md:gap-8">
           <div>
             <h1 className="text-2xl tracking-tight text-neutral-900 dark:text-neutral-100">
@@ -117,8 +117,14 @@ function UserLayoutContent({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Navigation Tabs */}
-      <div className="relative z-40 flex h-16 w-full items-center justify-center border-b border-neutral-200 bg-white/50 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-        <div className="flex space-x-8">
+      <div className="sticky top-[60px] z-40 flex h-16 w-full items-center justify-center border-b border-neutral-200 bg-white/90 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+        <div
+          className={`flex h-full items-center justify-center space-x-8 px-8 ${
+            pathname === '/account'
+              ? 'md:w-auto md:bg-white/50 md:px-12 md:backdrop-blur-sm md:dark:bg-black/20'
+              : 'w-full'
+          }`}
+        >
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;

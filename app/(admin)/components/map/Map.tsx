@@ -5,8 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from 'next-themes';
-import { ParcelLayer } from '@/app/(admin)/components/map/ParcelLayer';
-import GridOverlay from '@/app/(admin)/components/map/GridOverlay';
+import { ParcelGeoJSONLayer } from '@/app/(admin)/components/map/ParcelGeoJSONLayer';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { GlobeLock } from 'lucide-react';
@@ -91,19 +90,51 @@ function MapLockHandler({ isLocked }: { isLocked: boolean }) {
       map.dragging.disable();
       map.touchZoom.disable();
       map.doubleClickZoom.disable();
-      map.scrollWheelZoom.enable(); // Keep scroll zoom enabled
+      map.scrollWheelZoom.disable();
       map.boxZoom.disable();
       map.keyboard.disable();
+      if ((map as any).tap) (map as any).tap.disable();
     } else {
-      // Enable all interactions
+      // Enable dragging
       map.dragging.enable();
       map.touchZoom.enable();
       map.doubleClickZoom.enable();
       map.scrollWheelZoom.enable();
       map.boxZoom.enable();
       map.keyboard.enable();
+      if ((map as any).tap) (map as any).tap.enable();
     }
   }, [isLocked, map]);
+
+  return null;
+}
+
+function MapStateHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const saveMapState = () => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+
+      const mapState = {
+        center: [center.lat, center.lng],
+        zoom: zoom,
+      };
+
+      localStorage.setItem('mapState', JSON.stringify(mapState));
+    };
+
+    // Save state when map moves or zooms
+    map.on('moveend', saveMapState);
+    map.on('zoomend', saveMapState);
+
+    // Cleanup listeners
+    return () => {
+      map.off('moveend', saveMapState);
+      map.off('zoomend', saveMapState);
+    };
+  }, [map]);
 
   return null;
 }
@@ -111,6 +142,7 @@ function MapLockHandler({ isLocked }: { isLocked: boolean }) {
 const Map = () => {
   const { theme } = useTheme();
   const { showGrid, showBaseMap, isMapLocked } = useMapContext();
+
   // Default center - Harare, Zimbabwe coordinates
   const defaultCenter: [number, number] = [-17.8252, 31.0335];
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
@@ -118,6 +150,23 @@ const Map = () => {
   );
   const [locationError, setLocationError] = useState<string>('');
   const hasShownToast = useRef(false);
+
+  // Load saved map state from localStorage
+  const getSavedMapState = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mapState');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error('Failed to parse saved map state:', e);
+        }
+      }
+    }
+    return null;
+  };
+
+  const savedState = getSavedMapState();
 
   const mapTiles = {
     light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -174,18 +223,27 @@ const Map = () => {
       )}
 
       {isMapLocked && (
-        <div className="absolute top-4 right-4 z-1000 flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
+        <div className="absolute top-20 right-4 z-1000 flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
           <GlobeLock size={16} />
           <span>Map Locked</span>
         </div>
       )}
 
       <MapContainer
-        center={center}
-        zoom={zoom}
-        scrollWheelZoom={true}
-        style={{ height: '100%', width: '100%' }}
-        className="border-default z-0 bg-rose-300"
+        center={savedState?.center || defaultCenter}
+        zoom={savedState?.zoom || 13}
+        className="h-full w-full"
+        style={{ zIndex: 1 }}
+        zoomControl={false}
+        attributionControl={false}
+        worldCopyJump={true}
+        maxBounds={[
+          [-90, -180],
+          [90, 180],
+        ]}
+        maxBoundsViscosity={1.0}
+        minZoom={2}
+        maxZoom={20}
       >
         {showBaseMap && (
           <TileLayer
@@ -195,9 +253,10 @@ const Map = () => {
           />
         )}
 
-        <GridOverlay visible={showGrid} />
+        <ParcelGeoJSONLayer />
         <MapLockHandler isLocked={isMapLocked} />
         <LocationMarker position={userLocation} />
+        <MapStateHandler />
       </MapContainer>
     </div>
   );

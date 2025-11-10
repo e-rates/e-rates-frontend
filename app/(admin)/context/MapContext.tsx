@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useRef, useState } from 'react';
 import { Map as LeafletMap } from 'leaflet';
+import toast from 'react-hot-toast';
 
 interface MapContextType {
   mapRef: React.MutableRefObject<LeafletMap | null>;
@@ -17,6 +18,20 @@ interface MapContextType {
   toggleBaseMap: () => void;
   isMapLocked: boolean;
   toggleMapLock: () => void;
+  showParcels: boolean;
+  toggleParcels: () => void;
+  parcelFilters: {
+    area_name?: string;
+    status?: 'active' | 'inactive';
+    search?: string;
+    owner_user?: string;
+  };
+  setParcelFilters: (filters: {
+    area_name?: string;
+    status?: 'active' | 'inactive';
+    search?: string;
+    owner_user?: string;
+  }) => void;
 }
 
 const MapContext = createContext<MapContextType | null>(null);
@@ -28,6 +43,13 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const [gridRedrawTrigger, setGridRedrawTrigger] = useState(0);
   const [showBaseMap, setShowBaseMap] = useState(true);
   const [isMapLocked, setIsMapLocked] = useState(false);
+  const [showParcels, setShowParcels] = useState(true);
+  const [parcelFilters, setParcelFilters] = useState<{
+    area_name?: string;
+    status?: 'active' | 'inactive';
+    search?: string;
+    owner_user?: string;
+  }>({});
 
   const zoomIn = () => {
     if (mapRef.current && isMapInView) {
@@ -48,7 +70,16 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const toggleGrid = () => {
-    setShowGrid((prev) => !prev);
+    setShowGrid((prev) => {
+      const newValue = !prev;
+      if (newValue) {
+        toast('Click on any parcel to view its coordinates', {
+          icon: '📍',
+          duration: 3000,
+        });
+      }
+      return newValue;
+    });
   };
 
   const triggerGridRedraw = () => {
@@ -61,6 +92,10 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
   const toggleMapLock = () => {
     setIsMapLocked((prev) => !prev);
+  };
+
+  const toggleParcels = () => {
+    setShowParcels((prev) => !prev);
   };
 
   return (
@@ -79,6 +114,10 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         toggleBaseMap,
         isMapLocked,
         toggleMapLock,
+        showParcels,
+        toggleParcels,
+        parcelFilters,
+        setParcelFilters,
       }}
     >
       {children}

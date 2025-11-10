@@ -26,7 +26,7 @@ export interface ParcelDetailsResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { plotnumber: string } }
+  { params }: { params: Promise<{ plotnumber: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -42,7 +42,7 @@ export async function GET(
       );
     }
 
-    const { plotnumber } = params;
+    const { plotnumber } = await params;
 
     return NextResponse.json(
       {

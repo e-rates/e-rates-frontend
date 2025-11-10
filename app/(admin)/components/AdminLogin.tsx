@@ -3,37 +3,36 @@
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useUserAuth } from '../../context/UserAuthContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { useSpring, animated } from '@react-spring/web';
-import { ThemeToggle } from '../../../components/theme-toggle';
+import { ThemeToggle } from '../../components/theme-toggle';
 
-const LoginSchema = z.object({
-  phonenumber: z.string().min(10, 'invalid phone number'),
-  password: z.string().min(3, 'password is too short'),
+const AdminLoginSchema = z.object({
+  username: z.string().min(3, 'Username is too short'),
+  password: z.string().min(3, 'Password is too short'),
 });
 
-type LoginFormData = z.infer<typeof LoginSchema>;
+type AdminLoginFormData = z.infer<typeof AdminLoginSchema>;
 
-const Login = () => {
+const AdminLogin = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
   const {
     handleSubmit,
     register,
     formState: { errors },
-  } = useForm<LoginFormData>({ resolver: zodResolver(LoginSchema) });
+  } = useForm<AdminLoginFormData>({ resolver: zodResolver(AdminLoginSchema) });
 
-  const phoneBorderAnimation = useSpring({
-    borderColor: phoneFocused
+  const usernameBorderAnimation = useSpring({
+    borderColor: usernameFocused
       ? 'rgba(59, 130, 246, 1)'
       : 'rgba(209, 213, 219, 0.3)',
     config: { tension: 300, friction: 30 },
@@ -46,12 +45,12 @@ const Login = () => {
     config: { tension: 300, friction: 30 },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: AdminLoginFormData) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/user/login', {
+      const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -60,12 +59,12 @@ const Login = () => {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Login failed');
+        throw new Error(result.error || 'Admin login failed');
       }
 
       if (result.data?.access && result.data?.refresh) {
         authService.setTokens(result.data.access, result.data.refresh);
-        window.location.href = '/';
+        window.location.href = '/dashboard';
       }
     } catch (err) {
       setError(
@@ -73,26 +72,26 @@ const Login = () => {
           ? err.message
           : 'Login failed. Please check your credentials.'
       );
-      console.error('Login error:', err);
+      console.error('Admin login error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen w-full items-start justify-center p-4 pt-16">
-      {/* Theme Toggle in top-right corner of screen */}
-      <div className="fixed top-4 right-4 z-50">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-neutral-950 dark:to-neutral-900">
+      {/* Theme Toggle positioned absolutely */}
+      <div className="absolute top-6 right-6">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl md:p-8 dark:bg-neutral-900">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl dark:bg-neutral-900">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
-            Welcome Back
+            Admin Portal
           </h1>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-            Sign in to your account
+            Sign in to access the dashboard
           </p>
         </div>
 
@@ -105,27 +104,27 @@ const Login = () => {
 
           <div className="space-y-2">
             <label
-              htmlFor="phonenumber"
+              htmlFor="username"
               className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
             >
-              Phone number
+              Username
             </label>
             <animated.input
               type="text"
-              id="phonenumber"
-              {...register('phonenumber')}
-              onFocus={() => setPhoneFocused(true)}
-              onBlur={() => setPhoneFocused(false)}
+              id="username"
+              {...register('username')}
+              onFocus={() => setUsernameFocused(true)}
+              onBlur={() => setUsernameFocused(false)}
               style={{
-                borderColor: phoneBorderAnimation.borderColor,
+                borderColor: usernameBorderAnimation.borderColor,
               }}
               className="h-12 w-full rounded-xl border-2 bg-white px-4 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
-              placeholder="+1234567890"
+              placeholder="Enter your username"
               disabled={isLoading}
             />
-            {errors.phonenumber && (
+            {errors.username && (
               <p className="text-sm text-red-600 dark:text-red-400">
-                {errors.phonenumber.message}
+                {errors.username.message}
               </p>
             )}
           </div>
@@ -148,7 +147,7 @@ const Login = () => {
                   borderColor: passwordBorderAnimation.borderColor as any,
                 }}
                 className="h-12 w-full rounded-xl border-2 bg-white px-4 pr-12 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 disabled={isLoading}
               />
               <button
@@ -175,7 +174,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="h-12 w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 font-semibold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
@@ -183,7 +182,7 @@ const Login = () => {
 
         <div className="mt-6 text-center">
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Welcome to E-rates
+            Authorized personnel only
           </p>
         </div>
       </div>
@@ -191,4 +190,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default AdminLogin;
