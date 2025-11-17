@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from 'next-themes';
 import { ParcelGeoJSONLayer } from '@/app/(admin)/components/map/ParcelGeoJSONLayer';
+import GridOverlay from '@/app/(admin)/components/map/GridOverlay';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { GlobeLock } from 'lucide-react';
@@ -27,6 +28,7 @@ L.Marker.prototype.options.icon = icon;
 function LocationMarker({ position }: { position: [number, number] | null }) {
   const map = useMap();
   const { mapRef, setIsMapInView } = useMapContext();
+  const hasCenteredRef = useRef(false);
 
   useEffect(() => {
     if (map) {
@@ -34,15 +36,10 @@ function LocationMarker({ position }: { position: [number, number] | null }) {
       setIsMapInView(true);
 
       const handleResize = () => {
-        map.invalidateSize();
-
+        // Single invalidateSize call with animation disabled
         setTimeout(() => {
-          map.invalidateSize();
-        }, 50);
-
-        setTimeout(() => {
-          map.invalidateSize();
-        }, 400);
+          map.invalidateSize({ animate: false, pan: false });
+        }, 100);
       };
 
       window.addEventListener('resize', handleResize);
@@ -59,10 +56,10 @@ function LocationMarker({ position }: { position: [number, number] | null }) {
   }, [map, mapRef, setIsMapInView]);
 
   useEffect(() => {
-    if (position) {
-      map.flyTo(position, 15, {
-        duration: 2,
-      });
+    if (position && !hasCenteredRef.current) {
+      // Use setView instead of flyTo to avoid animation
+      map.setView(position, 15, { animate: false });
+      hasCenteredRef.current = true;
     }
   }, [position, map]);
 
@@ -71,10 +68,11 @@ function LocationMarker({ position }: { position: [number, number] | null }) {
   return (
     <Marker position={position}>
       <Popup>
-        <div className="text-sm">
-          <strong>Your Location</strong>
-          <p>Latitude: {position[0].toFixed(4)}</p>
-          <p>Longitude: {position[1].toFixed(4)}</p>
+        <div className="p-2">
+          <p className="font-semibold">Your Location</p>
+          <p className="text-xs text-gray-600">
+            Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
+          </p>
         </div>
       </Popup>
     </Marker>
@@ -142,6 +140,8 @@ function MapStateHandler() {
 const Map = () => {
   const { theme } = useTheme();
   const { showGrid, showBaseMap, isMapLocked } = useMapContext();
+  const [isMounted, setIsMounted] = useState(false);
+  const [mapKey, setMapKey] = useState(0); // Add key to force remount if needed
 
   // Default center - Harare, Zimbabwe coordinates
   const defaultCenter: [number, number] = [-17.8252, 31.0335];
@@ -150,6 +150,16 @@ const Map = () => {
   );
   const [locationError, setLocationError] = useState<string>('');
   const hasShownToast = useRef(false);
+
+  // Ensure component is mounted before rendering map
+  useEffect(() => {
+    setIsMounted(true);
+
+    // Cleanup: increment key to force new map instance on remount
+    return () => {
+      setMapKey((prev) => prev + 1);
+    };
+  }, []);
 
   // Load saved map state from localStorage
   const getSavedMapState = () => {
@@ -212,10 +222,19 @@ const Map = () => {
   const center = userLocation || defaultCenter;
   const zoom = userLocation ? 15 : 13;
 
+  // Don't render map until mounted (prevents SSR issues)
+  if (!isMounted) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <p className="text-gray-600 dark:text-gray-400">Loading map...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-full w-full">
       {locationError && (
-        <div className="absolute top-4 left-4 z-1000 rounded-lg bg-yellow-100 p-3 text-sm text-yellow-800 shadow-lg">
+        <div className="squircle-lg absolute top-4 left-4 z-1000 bg-yellow-100 p-3 text-sm text-yellow-800 shadow-lg">
           <strong>Location Access:</strong> {locationError}
           <br />
           <span className="text-xs">Using default location instead</span>
@@ -223,15 +242,16 @@ const Map = () => {
       )}
 
       {isMapLocked && (
-        <div className="absolute top-20 right-4 z-1000 flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
+        <div className="squircle-lg absolute top-20 right-4 z-1000 flex items-center gap-2 bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
           <GlobeLock size={16} />
           <span>Map Locked</span>
         </div>
       )}
 
       <MapContainer
-        center={savedState?.center || defaultCenter}
-        zoom={savedState?.zoom || 13}
+        key={`map-${mapKey}`}
+        center={userLocation || savedState?.center || defaultCenter}
+        zoom={userLocation ? 15 : savedState?.zoom || 13}
         className="h-full w-full"
         style={{ zIndex: 1 }}
         zoomControl={false}
@@ -253,6 +273,8 @@ const Map = () => {
           />
         )}
 
+        {/* GridOverlay disabled - using Inspector mode instead */}
+        {/* <GridOverlay visible={showGrid} /> */}
         <ParcelGeoJSONLayer />
         <MapLockHandler isLocked={isMapLocked} />
         <LocationMarker position={userLocation} />

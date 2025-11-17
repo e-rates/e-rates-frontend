@@ -85,7 +85,7 @@ const AdminLogin = () => {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl dark:bg-neutral-900">
+      <div className="squircle-2xl w-full max-w-md bg-white p-8 shadow-xl dark:bg-neutral-900">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
             Admin Portal
@@ -97,7 +97,7 @@ const AdminLogin = () => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
+            <div className="squircle-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
               {error}
             </div>
           )}
@@ -118,7 +118,7 @@ const AdminLogin = () => {
               style={{
                 borderColor: usernameBorderAnimation.borderColor,
               }}
-              className="h-12 w-full rounded-xl border-2 bg-white px-4 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
+              className="squircle-xl h-12 w-full border-2 bg-white px-4 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
               placeholder="Enter your username"
               disabled={isLoading}
             />
@@ -146,7 +146,7 @@ const AdminLogin = () => {
                 style={{
                   borderColor: passwordBorderAnimation.borderColor as any,
                 }}
-                className="h-12 w-full rounded-xl border-2 bg-white px-4 pr-12 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
+                className="squircle-xl h-12 w-full border-2 bg-white px-4 pr-12 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
                 placeholder="Enter your password"
                 disabled={isLoading}
               />
@@ -174,7 +174,7 @@ const AdminLogin = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            className="squircle-xl h-12 w-full bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>

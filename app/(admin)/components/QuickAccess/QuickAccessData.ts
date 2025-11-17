@@ -7,7 +7,7 @@ import {
   FileArchive,
   GlobeLock,
   Grid3x2,
-  Grid3x3,
+  Eye,
   LucideIcon,
   MessageCircleMore,
   MessageCircleMoreIcon,
@@ -40,7 +40,7 @@ export const QuickAccessMenuItems: QuickAccessMenuItem[] = [
     },
   },
   { name: 'ExportFile', icon: FileArchive, href: '/' },
-  { name: 'Grid', icon: Grid3x3, requiresContext: true }, // Grid toggle requires MapContext
+  { name: 'Inspector', icon: Eye, requiresContext: true }, // Parcel Inspector Mode
   { name: 'BaseMap', icon: Earth, requiresContext: true }, // BaseMap toggle requires MapContext
   { name: 'LockView', icon: GlobeLock, requiresContext: true }, // LockView toggle requires MapContext
   { name: 'AddItems', icon: CircleFadingPlus, href: '/' },

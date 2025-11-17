@@ -30,7 +30,7 @@ export default function ReportsPage() {
           <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {/* Financial Reports */}
             <div className="bg-card-bg border-border-default hover:border-primary group cursor-pointer rounded-lg border p-6 transition-all">
-              <div className="bg-primary/10 text-primary mb-4 inline-flex rounded-lg p-3">
+              <div className="squircle-lg bg-primary/10 text-primary mb-4 inline-flex p-3">
                 <BarChart3 className="h-6 w-6" />
               </div>
               <h3 className="text-text-primary mb-2 text-lg font-semibold">
@@ -46,7 +46,7 @@ export default function ReportsPage() {
 
             {/* Parcel Reports */}
             <div className="bg-card-bg border-border-default hover:border-primary group cursor-pointer rounded-lg border p-6 transition-all">
-              <div className="bg-success/10 text-success mb-4 inline-flex rounded-lg p-3">
+              <div className="squircle-lg bg-success/10 text-success mb-4 inline-flex p-3">
                 <BarChart3 className="h-6 w-6" />
               </div>
               <h3 className="text-text-primary mb-2 text-lg font-semibold">

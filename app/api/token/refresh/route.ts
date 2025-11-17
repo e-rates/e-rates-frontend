@@ -6,12 +6,12 @@ export async function POST(request: Request) {
 
     if (!refresh) {
       return NextResponse.json(
-        { success: false, error: 'Refresh token is required' },
+        { error: 'Refresh token is required' },
         { status: 400 }
       );
     }
 
-    const response = await fetch('http://127.0.0.1:8001/api/token/refresh/', {
+    const response = await fetch('http://127.0.0.1:8080/api/token/refresh', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -25,21 +25,18 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { success: false, error: data.detail || 'Token refresh failed' },
+        { error: data.detail || 'Token refresh failed' },
         { status: response.status }
       );
     }
 
     return NextResponse.json({
-      success: true,
-      data: {
-        access: data.access,
-      },
+      access: data.access,
     });
   } catch (error) {
     console.error('Token refresh error:', error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

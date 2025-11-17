@@ -68,7 +68,7 @@ const AdminProfile = () => {
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+      <div className="squircle-lg bg-red-50 p-4 dark:bg-red-900/20">
         <div className="text-red-600 dark:text-red-400">{error}</div>
       </div>
     );
@@ -76,7 +76,7 @@ const AdminProfile = () => {
 
   if (!profile) {
     return (
-      <div className="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-800">
+      <div className="squircle-lg bg-neutral-50 p-4 dark:bg-neutral-800">
         <div className="text-neutral-600 dark:text-neutral-400">
           No profile data found
         </div>
@@ -85,7 +85,7 @@ const AdminProfile = () => {
   }
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900">
+    <div className="squircle-xl bg-white p-6 shadow-lg dark:bg-neutral-900">
       <div className="mb-6 flex items-center space-x-3">
         <Crown className="h-6 w-6 text-yellow-500" />
         <h2 className="text-xl font-bold text-neutral-900 dark:text-white">

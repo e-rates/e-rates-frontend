@@ -1,4 +1,3 @@
-import { Squircle } from '@/app/components/ui/squircle';
 import React, { useState, useEffect } from 'react';
 import { QuickToolsItems, QuickToolItem } from './QuickToolsData';
 import { useSpring, animated } from '@react-spring/web';
@@ -128,7 +127,7 @@ const QuickToolsBar = () => {
           placeholder="search anything ..."
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
-          className="dark:border-border-default dark:bg-elevated-surface h-[35px] w-full rounded-full border border-gray-200 bg-white pr-4 pl-10 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-gray-400 dark:placeholder:text-gray-500 dark:focus:border-gray-600"
+          className="squircle-full dark:border-border-default dark:bg-elevated-surface h-[35px] w-full border border-gray-200 bg-white pr-4 pl-10 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-gray-400 dark:placeholder:text-gray-500 dark:focus:border-gray-600"
         />
       </div>
 
@@ -230,19 +229,18 @@ const QuickToolItem = ({
       {...listeners}
     >
       <animated.div style={springProps} onClick={onClick}>
-        <Squircle
-          smoothing={'moderate'}
-          className={`flex h-[35px] w-[35px] cursor-grab items-center justify-center transition-all duration-300 active:cursor-grabbing ${
+        <div
+          className={`squircle-md flex h-[35px] w-[35px] cursor-grab items-center justify-center transition-all duration-300 active:cursor-grabbing ${
             isActive
               ? 'bg-black text-white dark:bg-white dark:text-black'
               : 'dark:bg-elevated-surface bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 dark:text-current'
           }`}
         >
           <item.icon size={18} />
-        </Squircle>
+        </div>
       </animated.div>
       {isHovered && !isDragging && (
-        <div className="text-regular-md absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-black px-3 py-1.5 whitespace-nowrap text-white shadow-lg">
+        <div className="squircle-lg text-regular-md absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 bg-black px-3 py-1.5 whitespace-nowrap text-white shadow-lg">
           {item.name}
         </div>
       )}

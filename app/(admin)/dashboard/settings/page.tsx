@@ -31,7 +31,7 @@ export default function SettingsPage() {
 
           <div className="space-y-6">
             {/* Appearance */}
-            <div className="bg-card-bg border-border-default rounded-lg border p-6">
+            <div className="squircle-lg bg-card-bg border-border-default border p-6">
               <div className="mb-4 flex items-center gap-3">
                 <Palette className="text-primary h-5 w-5" />
                 <h2 className="text-text-primary text-lg font-semibold">
@@ -50,7 +50,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Notifications */}
-            <div className="bg-card-bg border-border-default rounded-lg border p-6">
+            <div className="squircle-lg bg-card-bg border-border-default border p-6">
               <div className="mb-4 flex items-center gap-3">
                 <Bell className="text-primary h-5 w-5" />
                 <h2 className="text-text-primary text-lg font-semibold">
@@ -88,7 +88,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Regional Settings */}
-            <div className="bg-card-bg border-border-default rounded-lg border p-6">
+            <div className="squircle-lg bg-card-bg border-border-default border p-6">
               <div className="mb-4 flex items-center gap-3">
                 <Globe className="text-primary h-5 w-5" />
                 <h2 className="text-text-primary text-lg font-semibold">

@@ -49,7 +49,7 @@ export default function NotificationsPage() {
             return (
               <div
                 key={notification.id}
-                className="group relative overflow-hidden rounded-2xl border border-neutral-200/60 bg-white/80 backdrop-blur-xl transition-all duration-300 hover:scale-[1.01] hover:border-neutral-300 hover:shadow-lg dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:hover:border-neutral-600"
+                className="squircle-2xl group relative overflow-hidden border border-neutral-200/60 bg-white/80 backdrop-blur-xl transition-all duration-300 hover:scale-[1.01] hover:border-neutral-300 hover:shadow-lg dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:hover:border-neutral-600"
               >
                 <div className="flex items-start gap-4 p-4">
                   {/* Icon */}

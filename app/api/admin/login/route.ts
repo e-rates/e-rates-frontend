@@ -11,7 +11,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch('http://127.0.0.1:8001/api/token/', {
+    // Call the backend token endpoint
+    const response = await fetch('http://127.0.0.1:8080/api/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,14 +23,15 @@ export async function POST(request: Request) {
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
+      const data = await response.json();
       return NextResponse.json(
         { success: false, error: data.detail || 'Invalid credentials' },
         { status: response.status }
       );
     }
+
+    const data = await response.json();
 
     return NextResponse.json({
       success: true,

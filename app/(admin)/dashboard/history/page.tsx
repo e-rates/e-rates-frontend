@@ -21,9 +21,9 @@ export default function HistoryPage() {
           </div>
 
           {/* Filter Bar */}
-          <div className="bg-card-bg border-border-default mb-6 flex items-center gap-4 rounded-lg border p-4">
+          <div className="squircle-lg bg-card-bg border-border-default mb-6 flex items-center gap-4 border p-4">
             <div className="flex flex-1 gap-4">
-              <select className="bg-main-bg border-border-default text-text-primary focus:border-primary rounded-lg border px-4 py-2 text-sm focus:outline-none">
+              <select className="squircle-lg bg-main-bg border-border-default text-text-primary focus:border-primary border px-4 py-2 text-sm focus:outline-none">
                 <option>All Activities</option>
                 <option>Payments</option>
                 <option>User Actions</option>
@@ -31,7 +31,7 @@ export default function HistoryPage() {
               </select>
               <input
                 type="date"
-                className="bg-main-bg border-border-default text-text-primary focus:border-primary rounded-lg border px-4 py-2 text-sm focus:outline-none"
+                className="squircle-lg bg-main-bg border-border-default text-text-primary focus:border-primary border px-4 py-2 text-sm focus:outline-none"
               />
             </div>
             <Button variant="outline" className="gap-2">
@@ -41,7 +41,7 @@ export default function HistoryPage() {
           </div>
 
           {/* Timeline */}
-          <div className="bg-card-bg border-border-default rounded-lg border p-6">
+          <div className="squircle-lg bg-card-bg border-border-default border p-6">
             <div className="space-y-6">
               {/* Timeline Item Example */}
               <div className="flex gap-4">

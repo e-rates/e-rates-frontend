@@ -27,7 +27,7 @@ export default function RatePaymentsPage() {
           </div>
 
           {/* Empty State */}
-          <div className="bg-card-bg border-border-default flex min-h-[400px] flex-col items-center justify-center rounded-lg border p-12">
+          <div className="squircle-lg bg-card-bg border-border-default flex min-h-[400px] flex-col items-center justify-center border p-12">
             <div className="text-center">
               <h3 className="text-text-primary mb-2 text-lg font-semibold">
                 No Payment Records

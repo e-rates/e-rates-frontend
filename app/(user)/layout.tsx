@@ -24,8 +24,16 @@ function UserLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Debug logging
+  console.log('UserLayout:', { pathname, isAuthenticated, isLoading });
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && pathname !== '/account') {
+    if (
+      !isLoading &&
+      !isAuthenticated &&
+      pathname !== '/account' &&
+      pathname !== '/account/'
+    ) {
       router.push('/account');
     }
   }, [isAuthenticated, isLoading, pathname, router]);
@@ -52,17 +60,23 @@ function UserLayoutContent({ children }: { children: React.ReactNode }) {
     key: pathname,
   });
 
+  // Special layout for account/login page - no navigation, just show content
+  if (pathname === '/account' || pathname === '/account/') {
+    return (
+      <div style={{ background: 'white', minHeight: '100vh' }}>{children}</div>
+    );
+  }
+
   if (isLoading) {
     return <FullPageLoader text="Authenticating..." variant="gradient" />;
   }
 
-  if (!isAuthenticated && pathname !== '/account') {
-    return null;
-  }
-
-  // Special layout for account/login page - no navigation
-  if (pathname === '/account') {
-    return <animated.main style={pageStyles}>{children}</animated.main>;
+  if (!isAuthenticated) {
+    return (
+      <div style={{ background: 'white', minHeight: '100vh' }}>
+        Redirecting...
+      </div>
+    );
   }
 
   return (

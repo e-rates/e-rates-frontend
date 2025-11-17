@@ -74,7 +74,7 @@ const History = () => {
 
       {/* Table */}
       <div>
-        <div className="overflow-hidden rounded-lg border border-neutral-200 shadow-sm dark:border-neutral-800">
+        <div className="squircle-lg overflow-hidden border border-neutral-200 shadow-sm dark:border-neutral-800">
           <table className="w-full">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (

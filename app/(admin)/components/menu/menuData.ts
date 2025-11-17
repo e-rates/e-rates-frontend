@@ -8,6 +8,7 @@ import {
   Settings,
   User,
   type LucideIcon,
+  Database,
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -24,6 +25,7 @@ export const menuItems: MenuItem[] = [
   { name: 'Defaulters', icon: UserX, href: '/dashboard/defaulters' },
   { name: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
   { name: 'History', icon: Clock, href: '/dashboard/history' },
+  { name: 'Data Entry', icon: Database, href: '/dashboard/data_entry' },
 ];
 
 export const bottomMenuItems: MenuItem[] = [
@@ -38,6 +40,7 @@ export const shortLabels: Record<string, string> = {
   Defaulters: 'Defaulters',
   Reports: 'Reports',
   History: 'History',
+  'Data Entry': 'Data',
   Account: 'Account',
   Settings: 'Settings',
 };

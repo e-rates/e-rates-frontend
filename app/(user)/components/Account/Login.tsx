@@ -80,15 +80,24 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-start justify-center p-4 pt-16">
+    <div
+      className="flex min-h-screen w-full items-start justify-center p-4 pt-16"
+      style={{ minHeight: '100vh', background: 'white' }}
+    >
       {/* Theme Toggle in top-right corner of screen */}
       <div className="fixed top-4 right-4 z-50">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl md:p-8 dark:bg-neutral-900">
+      <div
+        className="squircle-2xl w-full max-w-md bg-white p-6 shadow-xl md:p-8 dark:bg-neutral-900"
+        style={{ background: 'white', padding: '2rem', borderRadius: '2rem' }}
+      >
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <h1
+            className="text-3xl font-bold text-neutral-900 dark:text-white"
+            style={{ fontSize: '2rem', color: '#000' }}
+          >
             Welcome Back
           </h1>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
@@ -98,7 +107,7 @@ const Login = () => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
+            <div className="squircle-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
               {error}
             </div>
           )}
@@ -119,7 +128,7 @@ const Login = () => {
               style={{
                 borderColor: phoneBorderAnimation.borderColor,
               }}
-              className="h-12 w-full rounded-xl border-2 bg-white px-4 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
+              className="squircle-xl h-12 w-full border-2 bg-white px-4 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
               placeholder="+1234567890"
               disabled={isLoading}
             />
@@ -147,7 +156,7 @@ const Login = () => {
                 style={{
                   borderColor: passwordBorderAnimation.borderColor as any,
                 }}
-                className="h-12 w-full rounded-xl border-2 bg-white px-4 pr-12 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
+                className="squircle-xl h-12 w-full border-2 bg-white px-4 pr-12 text-sm text-neutral-900 backdrop-blur-sm transition-shadow duration-200 placeholder:text-neutral-400 focus:shadow-lg focus:outline-none dark:bg-neutral-800 dark:text-white dark:placeholder:text-neutral-500"
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -175,7 +184,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="h-12 w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 font-semibold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            className="squircle-xl h-12 w-full bg-gradient-to-r from-green-600 to-emerald-600 font-semibold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>

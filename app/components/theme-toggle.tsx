@@ -3,7 +3,6 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { useSpring, animated } from '@react-spring/web';
-import { Squircle } from './ui/squircle';
 
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
@@ -84,32 +83,34 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Squircle
-        as="button"
-        smoothing="ios"
-        className="bg-hover-surface h-[45px] w-[45px] cursor-pointer"
+      <button
+        className="bg-hover-surface squircle-lg h-[45px] w-[45px] cursor-pointer"
+        style={{
+          background: '#eee',
+          height: '45px',
+          width: '45px',
+          borderRadius: '1rem',
+        }}
       >
         <div />
-      </Squircle>
+      </button>
     );
   }
 
   return (
     <animated.div style={springProps}>
-      <Squircle
-        as="button"
-        smoothing="ios"
-        className="bg-hover-surface text-text-primary hover:bg-active-surface flex h-[45px] w-[45px] cursor-pointer items-center justify-center"
+      <button
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        className="bg-hover-surface text-text-primary hover:bg-active-surface squircle-lg flex h-[45px] w-[45px] cursor-pointer items-center justify-center"
+        aria-label="Toggle theme"
+        style={{
+          WebkitTapHighlightColor: 'transparent',
+        }}
       >
-        <div
-          onClick={handleClick}
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          className="flex h-full w-full items-center justify-center"
-          aria-label="Toggle theme"
-          style={{ WebkitTapHighlightColor: 'transparent' }}
-        >
+        <div className="flex h-full w-full items-center justify-center">
           {theme === 'dark' ? (
             <svg
               className="h-5 w-5"
@@ -140,7 +141,7 @@ export function ThemeToggle() {
             </svg>
           )}
         </div>
-      </Squircle>
+      </button>
     </animated.div>
   );
 }

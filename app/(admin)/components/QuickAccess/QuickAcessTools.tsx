@@ -1,4 +1,3 @@
-import { Squircle } from '@/app/components/ui/squircle';
 import React, { useState, useEffect } from 'react';
 import { QuickAccessMenuItems } from './QuickAccessData';
 import { useSpring, animated } from '@react-spring/web';
@@ -23,6 +22,8 @@ import { User2Icon } from 'lucide-react';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
 import CoordinateSearch from './CoordinateSearch';
+import { ParcelDetailsCard } from '../map/ParcelDetailsCard';
+import { NotificationsComponent } from './NotificationsComponent';
 
 const QuickAcessTools = () => {
   const [mounted, setMounted] = useState(false);
@@ -37,6 +38,8 @@ const QuickAcessTools = () => {
     showBaseMap,
     toggleMapLock,
     isMapLocked,
+    selectedParcel,
+    setSelectedParcel,
   } = useMapContext();
   const pathname = usePathname();
 
@@ -71,8 +74,8 @@ const QuickAcessTools = () => {
       item.action();
     }
 
-    // Handle Grid toggle
-    if (item.name === 'Grid' && item.requiresContext) {
+    // Handle Inspector toggle (renamed from Grid)
+    if (item.name === 'Inspector' && item.requiresContext) {
       toggleGrid();
       return;
     }
@@ -114,11 +117,11 @@ const QuickAcessTools = () => {
 
       {/*Quick Access Items  */}
       {!mounted ? (
-        <div className="dark:bg-panel-bg grid h-fit w-full grid-cols-5 place-items-center gap-3 rounded-3xl bg-gray-100 px-3 py-3">
+        <div className="squircle-3xl dark:bg-panel-bg grid h-fit w-full grid-cols-5 place-items-center gap-3 bg-gray-100 px-3 py-3">
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
-              className="dark:bg-elevated-surface h-[38px] w-[38px] animate-pulse rounded-md bg-gray-200"
+              className="squircle-md dark:bg-elevated-surface h-[38px] w-[38px] animate-pulse bg-gray-200"
             />
           ))}
         </div>
@@ -133,10 +136,7 @@ const QuickAcessTools = () => {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <Squircle
-              className="dark:bg-panel-bg grid h-fit w-full grid-cols-5 place-items-center gap-3 bg-gray-100 px-3 py-3"
-              smoothing={'ios'}
-            >
+            <div className="squircle-3xl dark:bg-panel-bg grid h-fit w-full grid-cols-5 place-items-center gap-3 bg-gray-100 px-3 py-3">
               <SortableContext
                 items={items.map((item) => item.name)}
                 strategy={rectSortingStrategy}
@@ -148,8 +148,15 @@ const QuickAcessTools = () => {
                   const isLeftEdge = index % 5 === 0;
                   const isRightEdge = index % 5 === 4;
 
-                  // Check if Grid, BaseMap, or LockView is active
-                  const isGridActive = item.name === 'Grid' && showGrid;
+                  // Disable Inspector on routes other than home and parcels-map
+                  const isInspectorDisabled =
+                    item.name === 'Inspector' &&
+                    !isOnHomePage &&
+                    !isOnParcelsMap;
+
+                  // Check if Inspector, BaseMap, or LockView is active
+                  const isInspectorActive =
+                    item.name === 'Inspector' && showGrid;
                   const isBaseMapActive =
                     item.name === 'BaseMap' && showBaseMap;
                   const isLockViewActive =
@@ -160,12 +167,13 @@ const QuickAcessTools = () => {
                       key={item.name}
                       item={item}
                       index={index}
+                      disabled={isInspectorDisabled}
                       isActive={
-                        isGridActive ||
+                        isInspectorActive ||
                         isBaseMapActive ||
                         isLockViewActive ||
                         (activeIndex === index &&
-                          item.name !== 'Grid' &&
+                          item.name !== 'Inspector' &&
                           item.name !== 'BaseMap' &&
                           item.name !== 'LockView')
                       }
@@ -181,7 +189,7 @@ const QuickAcessTools = () => {
                   );
                 })}
               </SortableContext>
-            </Squircle>
+            </div>
           </DndContext>
         </div>
       )}
@@ -199,29 +207,15 @@ const QuickAcessTools = () => {
       )}
 
       {/* Notifications - Only visible on home page */}
-      {isOnHomePage && (
-        <div className="border-border-default border-t-[0.5px] pt-2">
-          <div>
-            <h1 className="text-medium-md tracking-normal">Notifications</h1>
-          </div>
+      {isOnHomePage && <NotificationsComponent />}
 
-          <div className="bg-elevated-surface border-border-default flex h-[60px] w-full flex-row space-x-2 rounded-[12px] border-[0.5px]">
-            <div className="flex h-full w-[50px] flex-col items-center justify-center rounded-[12px]">
-              <User2Icon />
-            </div>
-            <div className="flex w-full flex-col">
-              {' '}
-              <div className="flex flex-row items-center justify-start space-x-2">
-                <p className="text-body-md tracking-tight">John Kimathi</p>
-                <p className="text-body-sm tracking-tight">Nyeri County</p>
-              </div>
-              <div className="flex h-full flex-col items-start justify-center">
-                <p className="text-regular-md tracking-tight">
-                  Payment received for <span className="">John Kimathi</span>
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* Parcel Details Card - Shown when parcel is selected in inspector mode */}
+      {(isOnHomePage || isOnParcelsMap) && selectedParcel && showGrid && (
+        <div className="border-border-default mt-2 border-t-[0.5px] pt-2">
+          <ParcelDetailsCard
+            parcel={selectedParcel}
+            onClose={() => setSelectedParcel(null)}
+          />
         </div>
       )}
     </div>
@@ -231,6 +225,7 @@ const QuickAcessTools = () => {
 interface QuickAccessItemProps {
   item: (typeof QuickAccessMenuItems)[0];
   index: number;
+  disabled?: boolean;
   isActive: boolean;
   isHovered: boolean;
   isClicked: boolean;
@@ -244,6 +239,7 @@ interface QuickAccessItemProps {
 
 const QuickAccessItem = ({
   item,
+  disabled = false,
   isActive,
   isHovered,
   isClicked,
@@ -264,7 +260,7 @@ const QuickAccessItem = ({
   } = useSortable({ id: item.name });
 
   const springProps = useSpring({
-    scale: isClicked ? 0.85 : isDragging ? 1.05 : 1,
+    scale: isClicked && !disabled ? 0.85 : isDragging ? 1.05 : 1,
     config: {
       tension: 300,
       friction: 10,
@@ -282,26 +278,30 @@ const QuickAccessItem = ({
       ref={setNodeRef}
       style={style}
       className="relative"
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
+      onMouseEnter={disabled ? undefined : onHover}
+      onMouseLeave={disabled ? undefined : onLeave}
       {...attributes}
       {...listeners}
     >
-      <animated.div style={springProps} onClick={onClick}>
-        <Squircle
-          smoothing={'moderate'}
-          className={`relative flex h-[38px] w-[38px] cursor-grab flex-col items-center justify-center rounded-md border-[0.5px] transition-all duration-300 active:cursor-grabbing ${
-            isActive
-              ? 'dark:border-border-default border-gray-300 bg-black text-white dark:bg-white dark:text-black'
-              : 'dark:border-border-default dark:bg-elevated-surface border-gray-200 bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 dark:text-current'
+      <animated.div
+        style={springProps}
+        onClick={disabled ? undefined : onClick}
+      >
+        <div
+          className={`squircle-md relative flex h-[38px] w-[38px] flex-col items-center justify-center border-[0.5px] transition-all duration-300 ${
+            disabled
+              ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400 opacity-30 dark:border-gray-700 dark:bg-gray-800'
+              : isActive
+                ? 'cursor-grab border-[#007AFF] bg-[#007AFF] text-white active:cursor-grabbing'
+                : 'dark:border-border-default dark:bg-elevated-surface cursor-grab border-gray-200 bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 active:cursor-grabbing dark:text-current'
           }`}
         >
           <item.icon size={20} />
-        </Squircle>
+        </div>
       </animated.div>
       {isHovered && !isDragging && (
         <div
-          className={`text-regular-md absolute z-50 rounded-lg bg-black px-3 py-1.5 whitespace-nowrap text-white shadow-lg ${
+          className={`squircle-lg text-regular-md absolute z-50 bg-black px-3 py-1.5 whitespace-nowrap text-white shadow-lg ${
             isBottomRow ? 'bottom-full mb-2' : 'top-full mt-2'
           } ${
             isLeftEdge

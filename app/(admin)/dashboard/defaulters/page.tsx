@@ -13,7 +13,7 @@ export default function DefaultersPage() {
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-error/10 text-error rounded-lg p-3">
+              <div className="squircle-lg bg-error/10 text-error p-3">
                 <UserX className="h-6 w-6" />
               </div>
               <div>
@@ -32,7 +32,7 @@ export default function DefaultersPage() {
           </div>
 
           {/* Empty State */}
-          <div className="bg-card-bg border-border-default flex min-h-[400px] flex-col items-center justify-center rounded-lg border p-12">
+          <div className="squircle-lg bg-card-bg border-border-default flex min-h-[400px] flex-col items-center justify-center border p-12">
             <div className="text-center">
               <div className="bg-error/10 text-error mx-auto mb-4 w-fit rounded-full p-4">
                 <UserX className="h-8 w-8" />

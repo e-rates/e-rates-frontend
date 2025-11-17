@@ -20,6 +20,8 @@ interface MapContextType {
   toggleMapLock: () => void;
   showParcels: boolean;
   toggleParcels: () => void;
+  selectedParcel: any | null;
+  setSelectedParcel: (parcel: any | null) => void;
   parcelFilters: {
     area_name?: string;
     status?: 'active' | 'inactive';
@@ -44,6 +46,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const [showBaseMap, setShowBaseMap] = useState(true);
   const [isMapLocked, setIsMapLocked] = useState(false);
   const [showParcels, setShowParcels] = useState(true);
+  const [selectedParcel, setSelectedParcel] = useState<any | null>(null);
   const [parcelFilters, setParcelFilters] = useState<{
     area_name?: string;
     status?: 'active' | 'inactive';
@@ -70,17 +73,21 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const toggleGrid = () => {
-    setShowGrid((prev) => {
-      const newValue = !prev;
-      if (newValue) {
-        toast('Click on any parcel to view its coordinates', {
-          icon: '📍',
-          duration: 3000,
-        });
-      }
-      return newValue;
-    });
+    setShowGrid((prev) => !prev);
   };
+
+  // Show toast when grid is enabled
+  React.useEffect(() => {
+    if (showGrid) {
+      toast(
+        'Parcel Inspector Mode: Click any parcel to view technical details',
+        {
+          icon: '🔍',
+          duration: 4000,
+        }
+      );
+    }
+  }, [showGrid]);
 
   const triggerGridRedraw = () => {
     setGridRedrawTrigger((prev) => prev + 1);
@@ -116,6 +123,8 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         toggleMapLock,
         showParcels,
         toggleParcels,
+        selectedParcel,
+        setSelectedParcel,
         parcelFilters,
         setParcelFilters,
       }}

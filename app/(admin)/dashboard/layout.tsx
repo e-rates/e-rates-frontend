@@ -71,7 +71,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Main Content Container */}
-        <div className="bg-elevated-surface flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           {/* Quick tools header - hides on scroll */}
           <div
             className={`border-border-default dark:bg-panel-bg shrink-0 border-b bg-gray-50 transition-all duration-300 ${

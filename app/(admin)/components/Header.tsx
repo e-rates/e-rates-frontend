@@ -101,7 +101,7 @@ const Header = () => {
         {/* Admin Profile Picture */}
         <button
           onClick={handleProfileClick}
-          className="flex items-center space-x-2 rounded-lg p-2 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          className="squircle-lg flex items-center space-x-2 p-2 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
           aria-label="View profile"
         >
           <div className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-r from-blue-500 to-purple-600 p-0.5">
@@ -124,7 +124,7 @@ const Header = () => {
 
         <button
           onClick={handleLogout}
-          className="flex cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="squircle-lg flex cursor-pointer items-center space-x-2 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
           aria-label="Log out"
         >
           <LogOut size={16} />

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-const API_BASE_URL = 'http://192.168.0.104:8001/api';
+const API_BASE_URL = '/api';
 
 interface TokenResponse {
   access: string;
@@ -26,7 +26,7 @@ export const authService = {
     password: string
   ): Promise<TokenResponse> {
     const response = await axios.post<TokenResponse>(
-      `${API_BASE_URL}/token/phone/`,
+      `${API_BASE_URL}/token/phone`,
       {
         phone,
         password,
@@ -44,7 +44,7 @@ export const authService = {
     username: string,
     password: string
   ): Promise<TokenResponse> {
-    const response = await axios.post<TokenResponse>(`${API_BASE_URL}/token/`, {
+    const response = await axios.post<TokenResponse>(`${API_BASE_URL}/token`, {
       username,
       password,
     });
@@ -65,7 +65,7 @@ export const authService = {
 
     try {
       const response = await axios.post<{ access: string }>(
-        `${API_BASE_URL}/token/refresh/`,
+        `${API_BASE_URL}/token/refresh`,
         {
           refresh: refreshToken,
         }
@@ -83,7 +83,7 @@ export const authService = {
 
   async verifyToken(token: string): Promise<boolean> {
     try {
-      await axios.post(`${API_BASE_URL}/token/verify/`, {
+      await axios.post(`${API_BASE_URL}/token/verify`, {
         token,
       });
       return true;
@@ -211,17 +211,40 @@ export const createAuthAxiosInstance = () => {
     async (error) => {
       const originalRequest = error.config;
 
-      if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log('Axios error interceptor:', {
+        status: error.response?.status,
+        url: originalRequest?.url,
+        hasResponse: !!error.response,
+        isRetry: originalRequest?._retry,
+      });
+
+      // Don't retry for token endpoints to prevent infinite loops
+      const isTokenEndpoint = originalRequest?.url?.includes('/token/');
+
+      if (
+        error.response?.status === 401 &&
+        !originalRequest._retry &&
+        !isTokenEndpoint
+      ) {
         originalRequest._retry = true;
 
         try {
+          console.log('Attempting to refresh token...');
           const newToken = await authService.refreshAccessToken();
 
           if (newToken) {
+            console.log('Token refreshed successfully');
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return instance(originalRequest);
+          } else {
+            console.log('Token refresh failed - no new token');
+            authService.clearTokens();
+            if (typeof window !== 'undefined') {
+              window.location.href = '/account';
+            }
           }
         } catch (refreshError) {
+          console.error('Token refresh error:', refreshError);
           authService.clearTokens();
           if (typeof window !== 'undefined') {
             window.location.href = '/account';
@@ -242,12 +265,41 @@ export const authAxios = createAuthAxiosInstance();
 // User profile service
 export const userService = {
   async getProfile() {
-    const response = await fetch('/api/users/me/', {
-      headers: {
-        Authorization: `Bearer ${await authService.getValidAccessToken()}`,
-      },
-    });
-    const result = await response.json();
-    return result;
+    try {
+      console.log('🔍 getProfile called');
+      const token = await authService.getValidAccessToken();
+
+      console.log('🔑 Token retrieved:', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenStart: token?.substring(0, 20),
+      });
+
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      console.log('📡 Making axios request to /api/users/me/');
+
+      const response = await axios.get('/api/users/me/', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('✅ Profile response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ getProfile error:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          message: error.message,
+          code: error.code,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+      }
+      throw error;
+    }
   },
 };

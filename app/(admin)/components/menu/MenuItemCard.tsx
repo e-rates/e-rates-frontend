@@ -35,8 +35,8 @@ export const MenuItemCard = ({
         {isActive && (
           <motion.div
             layoutId="activeBackground"
-            // Use static classes with dark: variant so SSR markup matches client
-            className="absolute inset-0 rounded-[10px] bg-black dark:bg-white"
+            // Apple blue background for active state
+            className="squircle-lg absolute inset-0 bg-[#007AFF]"
             initial={false}
             transition={{
               type: 'spring',
@@ -59,7 +59,7 @@ export const MenuItemCard = ({
             duration: 0.4,
             ease: 'easeOut',
           }}
-          className={`relative flex cursor-pointer items-center rounded-[10px] transition-all duration-500 ${
+          className={`squircle-lg relative flex cursor-pointer items-center transition-all duration-500 ${
             isCollapsed
               ? 'mx-auto h-auto w-12 flex-col justify-center gap-1 px-1 py-2'
               : 'h-10 w-full gap-3 px-3'
@@ -68,9 +68,7 @@ export const MenuItemCard = ({
         >
           <div
             className={`${
-              isActive
-                ? 'text-white dark:text-black'
-                : 'text-gray-600 dark:text-[#d1d5db]'
+              isActive ? 'text-white' : 'text-gray-600 dark:text-[#d1d5db]'
             }`}
             style={{
               filter: !isActive
@@ -88,9 +86,7 @@ export const MenuItemCard = ({
           {isCollapsed ? (
             <motion.span
               className={`text-center text-[9px] leading-tight font-medium ${
-                isActive
-                  ? 'text-white dark:text-black'
-                  : 'text-gray-600 dark:text-[#d1d5db]'
+                isActive ? 'text-white' : 'text-gray-600 dark:text-[#d1d5db]'
               }`}
               initial={false}
               animate={{
@@ -108,9 +104,7 @@ export const MenuItemCard = ({
           ) : (
             <motion.p
               className={`text-regular-md overflow-hidden font-medium whitespace-nowrap ${
-                isActive
-                  ? 'text-white dark:text-black'
-                  : 'text-gray-600 dark:text-[#d1d5db]'
+                isActive ? 'text-white' : 'text-gray-600 dark:text-[#d1d5db]'
               }`}
               initial={false}
               animate={{

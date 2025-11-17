@@ -19,25 +19,31 @@ export default function AdminLayout({
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated || !isAdmin) {
-        if (pathname !== '/admin-login') {
+        if (pathname !== '/admin-login' && pathname !== '/admin-login/') {
           router.push('/admin-login');
         }
-      } else if (pathname === '/admin-login') {
+      } else if (pathname === '/admin-login' || pathname === '/admin-login/') {
         router.push('/dashboard');
       }
     }
   }, [isAuthenticated, isAdmin, isLoading, pathname, router]);
 
+  if (pathname === '/admin-login' || pathname === '/admin-login/') {
+    return (
+      <div style={{ background: 'white', minHeight: '100vh' }}>{children}</div>
+    );
+  }
+
   if (isLoading) {
     return <FullPageLoader text="Authenticating..." variant="gradient" />;
   }
 
-  if (pathname === '/admin-login') {
-    return <>{children}</>;
-  }
-
   if (!isAuthenticated || !isAdmin) {
-    return null;
+    return (
+      <div style={{ background: 'white', minHeight: '100vh' }}>
+        Redirecting...
+      </div>
+    );
   }
 
   return (

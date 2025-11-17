@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Squircle } from '@/app/components/ui/squircle';
 import { Search, MapPin } from 'lucide-react';
 import { useMapContext } from '../../context/MapContext';
 import toast from 'react-hot-toast';
@@ -82,17 +81,14 @@ const CoordinateSearch = () => {
     <div className="flex w-full flex-col space-y-2">
       <div className="flex items-center justify-between px-1">
         <p className="text-regular-md">Coordinate Search</p>
-        <div className="rounded-full bg-blue-500/10 px-3 py-1 backdrop-blur-sm">
+        <div className="squircle-full bg-blue-500/10 px-3 py-1 backdrop-blur-sm">
           <p className="text-body-xs font-medium text-blue-600 dark:text-blue-400">
             Arc 1960 37S
           </p>
         </div>
       </div>
 
-      <Squircle
-        className="dark:bg-panel-bg flex w-full flex-col gap-3 bg-gray-100 p-3"
-        smoothing={'ios'}
-      >
+      <div className="squircle-3xl dark:bg-panel-bg flex w-full flex-col gap-3 bg-gray-100 p-3">
         {/* Eastings Inputs */}
         <div className="flex flex-col space-y-1">
           <label className="text-body-sm text-muted-foreground">
@@ -146,12 +142,12 @@ const CoordinateSearch = () => {
         {/* Search Button */}
         <button
           onClick={handleSearch}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+          className="squircle-lg flex w-full items-center justify-center gap-2 bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
         >
           <MapPin size={16} />
           Fit to Bounds
         </button>
-      </Squircle>
+      </div>
     </div>
   );
 };

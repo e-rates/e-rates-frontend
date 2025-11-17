@@ -32,7 +32,7 @@ const Assets = () => {
           <Link
             key={asset.plotNumber}
             href={'/'}
-            className="group relative overflow-hidden rounded-2xl border border-neutral-200/60 bg-white/80 backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:border-neutral-300 hover:shadow-lg dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:hover:border-neutral-600"
+            className="squircle-2xl group relative overflow-hidden border border-neutral-200/60 bg-white/80 backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:border-neutral-300 hover:shadow-lg dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:hover:border-neutral-600"
           >
             {/* Card content */}
             <div className="flex items-center justify-between p-4">

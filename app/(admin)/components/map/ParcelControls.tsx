@@ -66,7 +66,7 @@ export const ParcelControls = () => {
 
       {/* Filters Panel */}
       {showFilters && showParcels && (
-        <div className="min-w-[280px] rounded-lg border bg-white p-4 shadow-xl">
+        <div className="squircle-lg min-w-[280px] border bg-white p-4 shadow-xl">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold">Filter Parcels</h3>
             <Button
@@ -97,7 +97,7 @@ export const ParcelControls = () => {
                   onChange={(e) =>
                     setTempFilters({ ...tempFilters, search: e.target.value })
                   }
-                  className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="squircle-md w-full border border-gray-300 py-2 pr-3 pl-9 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -131,7 +131,7 @@ export const ParcelControls = () => {
                     status: e.target.value as 'active' | 'inactive' | undefined,
                   })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="squircle-md w-full border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
               >
                 <option value="">All Status</option>
                 <option value="active">Active</option>

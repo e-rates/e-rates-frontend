@@ -33,7 +33,7 @@ export const MenuHeader = ({
         {!isCollapsed && 'Menu'}
       </motion.p>
       <button
-        className="rounded-md p-1.5 transition-colors duration-200 hover:bg-gray-500/20"
+        className="squircle-md p-1.5 transition-colors duration-200 hover:bg-gray-500/20"
         onClick={onToggleCollapse}
       >
         <motion.div
