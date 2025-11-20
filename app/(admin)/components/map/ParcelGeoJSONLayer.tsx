@@ -1,126 +1,57 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSpring, animated } from '@react-spring/web';
 import { useMap } from 'react-leaflet';
+import L from 'leaflet';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
-import { ParcelDetailsCard } from './ParcelDetailsCard';
 import { parcelService } from '@/lib/parcelService';
+import { createRoot } from 'react-dom/client';
+import { ParcelPopup } from './ParcelPopup';
 
-// Enhanced popup content with all relevant parcel information
-function createPopupContent(properties: any): string {
-  const statusColors: Record<string, string> = {
-    active: '#007AFF',
-    inactive: '#FF3B30',
-    pending: '#FF9500',
+// Helper function for parcel styling
+const getParcelStyle = (feature: any, isHighlighted: boolean) => {
+  const properties = feature?.properties || {};
+  const status = properties.status?.toLowerCase();
+  const paymentStatus = properties.payment_status;
+  const isPaidCurrentYear = properties.is_paid_current_year;
+
+  if (isHighlighted) {
+    return {
+      fillColor: '#FFD600',
+      fillOpacity: 0.9,
+      color: '#FFD600',
+      weight: 5,
+      opacity: 1,
+    };
+  }
+
+  let color = '#2bc76f'; // Default green for active & paid
+
+  // Priority 1: Parcel status
+  if (status === 'inactive') {
+    color = '#8E8E93'; // Gray for inactive
+  } else if (status === 'pending') {
+    color = '#ffa726'; // Orange for pending
+  }
+  // Priority 2: Payment status (only for active parcels)
+  else if (isPaidCurrentYear) {
+    color = '#34C759'; // Green for paid current year
+  } else if (paymentStatus === 'partial') {
+    color = '#FF9500'; // Orange for partial payment
+  } else if (paymentStatus === 'unpaid' || !isPaidCurrentYear) {
+    color = '#FF3B30'; // Red for unpaid
+  }
+
+  return {
+    fillColor: color,
+    fillOpacity: 0.6,
+    color: color,
+    weight: 2,
+    opacity: 0.8,
   };
-
-  const status = properties.status?.toLowerCase() || 'active';
-  const statusColor = statusColors[status] || '#007AFF';
-
-  // Payment status styling
-  const paymentStatusColors: Record<string, string> = {
-    paid: '#34C759', // Green
-    unpaid: '#FF3B30', // Red
-    partial: '#FF9500', // Orange
-  };
-
-  const paymentStatus = properties.payment_status || 'unpaid';
-  const paymentStatusColor = paymentStatusColors[paymentStatus] || '#FF3B30';
-  const isPaidCurrentYear = properties.is_paid_current_year || false;
-  const paidYears = properties.paid_years || [];
-  const latestPaymentYear = properties.latest_payment_year;
-
-  // Calculate area in acres
-  const areaAcres =
-    properties.area_acres ||
-    (properties.area_m2 ? (properties.area_m2 / 4046.86).toFixed(2) : '0.00');
-
-  // Get custom properties
-  const customProps = properties.custom_props || properties.props || {};
-
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; min-width: 100px; max-width: 200px;">
-      <!-- Status Badge -->
-      <div style="background: ${statusColor}; color: white; padding: 6px 12px; text-align: center; font-weight: 600; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; margin: -10px -10px 10px -10px; border-radius: 8px 8px 0 0;">
-        ${status}
-      </div>
-      
-      <!-- Parcel Reference -->
-      <div style="margin-bottom: 8px;">
-        <div style="font-size: 17px; font-weight: 600; color: #000; margin-bottom: 2px;">${properties.parcel_ref || 'Unknown'}</div>
-        <div style="font-size: 12px; color: #8E8E93;">${customProps.area_name || customProps.AREA_NAME || 'No area name'}</div>
-      </div>
-      
-      <!-- Details Grid -->
-      <div style="font-size: 13px;">
-        <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-          <span style="color: #8E8E93;">Owner</span>
-          <span style="color: #000; font-weight: 500;">${properties.owner_username || 'admin'}</span>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-          <span style="color: #8E8E93;">Plot No</span>
-          <span style="color: #000; font-weight: 500;">${customProps.Parcel_No || customProps.PARCEL_NO || 'N/A'}</span>
-        </div>
-        
-        <!-- Payment Status -->
-        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E5E5EA;">
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;">
-            <span style="color: #8E8E93;">Payment Status</span>
-            <span style="background: ${paymentStatusColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${paymentStatus}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-            <span style="color: #8E8E93;">2025 Paid</span>
-            <span style="color: ${isPaidCurrentYear ? '#34C759' : '#FF3B30'}; font-weight: 600;">${isPaidCurrentYear ? '✓ Yes' : '✗ No'}</span>
-          </div>
-          ${latestPaymentYear
-      ? `
-          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-            <span style="color: #8E8E93;">Latest Payment</span>
-            <span style="color: #000; font-weight: 500;">${latestPaymentYear}</span>
-          </div>
-          `
-      : ''
-    }
-          ${paidYears.length > 0
-      ? `
-          <div style="margin-top: 4px; padding: 4px 6px; background: #F2F2F7; border-radius: 4px;">
-            <div style="font-size: 9px; color: #8E8E93; font-weight: 600; margin-bottom: 2px;">PAID YEARS</div>
-            <div style="font-size: 11px; color: #000; font-weight: 500;">${paidYears.join(', ')}</div>
-          </div>
-          `
-      : ''
-    }
-        </div>
-        
-        <!-- Area -->
-        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E5E5EA;">
-          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-            <span style="color: #8E8E93;">Area (m²)</span>
-            <span style="color: #000; font-weight: 600;">${(properties.area_m2 || 0).toLocaleString()}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-            <span style="color: #8E8E93;">Area (acres)</span>
-            <span style="color: #000; font-weight: 600;">${areaAcres}</span>
-          </div>
-        </div>
-        
-        ${properties.centroid
-      ? `
-        <div style="margin-top: 6px; padding: 4px 6px; background: #F2F2F7; border-radius: 4px;">
-          <div style="font-size: 9px; color: #8E8E93; font-weight: 600; margin-bottom: 1px;">CENTROID</div>
-          <div style="font-size: 10px; color: #000; font-family: 'SF Mono', monospace;">${properties.centroid.lat?.toFixed(6)}, ${properties.centroid.lng?.toFixed(6)}</div>
-        </div>
-        `
-      : ''
-    }
-      </div>
-    </div>
-  `;
-}
+};
 
 export function ParcelGeoJSONLayer() {
   const map = useMap();
@@ -128,6 +59,17 @@ export function ParcelGeoJSONLayer() {
   const loadingRef = useRef(false);
   const { showGrid, selectedParcel, setSelectedParcel, highlightedParcels } = useMapContext();
   const pathname = usePathname();
+
+  // Keep a ref of highlighted parcels to avoid stale closures in the style function
+  const highlightedParcelsRef = useRef(highlightedParcels);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Persistent highlighting: zoom to selected parcel and keep it highlighted
   useEffect(() => {
@@ -155,28 +97,21 @@ export function ParcelGeoJSONLayer() {
 
   // Update styles when highlightedParcels change
   useEffect(() => {
-    if (!geoJsonLayerRef.current) return;
+    // Update ref immediately
+    highlightedParcelsRef.current = highlightedParcels;
+
+    if (!geoJsonLayerRef.current) {
+      return;
+    }
 
     geoJsonLayerRef.current.eachLayer((layer: any) => {
       if (layer.feature) {
         const parcelRef = layer.feature.properties.parcel_ref;
         const isHighlighted = highlightedParcels.includes(parcelRef);
 
-        if (isHighlighted) {
-          // Apply highlight style
-          layer.setStyle({
-            color: '#FFD600',
-            fillColor: '#FFD600',
-            weight: 5,
-            fillOpacity: 0.9,
-            opacity: 1,
-          });
-        } else {
-          // Reset to default style
-          if (geoJsonLayerRef.current) {
-            geoJsonLayerRef.current.resetStyle(layer);
-          }
-        }
+        // Explicitly set style based on current state
+        const style = getParcelStyle(layer.feature, isHighlighted);
+        layer.setStyle(style);
       }
     });
   }, [highlightedParcels]);
@@ -204,13 +139,11 @@ export function ParcelGeoJSONLayer() {
         // Fetch all parcels
         const parcelData = await parcelService.getAllParcels();
 
+        if (!isMounted.current) return;
+
         console.log('📦 Parcel data received:', {
           type: parcelData?.type,
           featureCount: parcelData?.features?.length,
-          firstFeature: parcelData?.features?.[0],
-          crs: parcelData?.crs,
-          firstCoordinate:
-            parcelData?.features?.[0]?.geometry?.coordinates?.[0]?.[0]?.[0],
         });
 
         if (!parcelData?.features?.length) {
@@ -222,46 +155,9 @@ export function ParcelGeoJSONLayer() {
         // Create GeoJSON layer
         geoJsonLayerRef.current = L.geoJSON(parcelData, {
           style: (feature) => {
-            const status = feature?.properties?.status?.toLowerCase();
-            const paymentStatus = feature?.properties?.payment_status;
-            const isPaidCurrentYear = feature?.properties?.is_paid_current_year;
-            const parcelRef = feature?.properties?.parcel_ref;
-
-            // Highlight if in highlightedParcels
-            if (highlightedParcels && highlightedParcels.includes(parcelRef)) {
-              return {
-                fillColor: '#FFD600',
-                fillOpacity: 0.9,
-                color: '#FFD600',
-                weight: 5,
-                opacity: 1,
-              };
-            }
-
-            let color = '#2bc76f'; // Default green for active & paid
-
-            // Priority 1: Parcel status
-            if (status === 'inactive') {
-              color = '#8E8E93'; // Gray for inactive
-            } else if (status === 'pending') {
-              color = '#ffa726'; // Orange for pending
-            }
-            // Priority 2: Payment status (only for active parcels)
-            else if (isPaidCurrentYear) {
-              color = '#34C759'; // Green for paid current year
-            } else if (paymentStatus === 'partial') {
-              color = '#FF9500'; // Orange for partial payment
-            } else if (paymentStatus === 'unpaid' || !isPaidCurrentYear) {
-              color = '#FF3B30'; // Red for unpaid
-            }
-
-            return {
-              fillColor: color,
-              fillOpacity: 0.6,
-              color: color,
-              weight: 2,
-              opacity: 0.8,
-            };
+            // Use ref for initial style to ensure consistency
+            const isHighlighted = highlightedParcelsRef.current.includes(feature?.properties?.parcel_ref);
+            return getParcelStyle(feature, isHighlighted);
           },
           onEachFeature: (feature, layer) => {
             // Handle click based on inspector mode
@@ -287,40 +183,86 @@ export function ParcelGeoJSONLayer() {
               }
             });
 
-            // Add popup (shown when not in inspector mode)
-            const popupContent = createPopupContent(feature.properties);
-            layer.bindPopup(popupContent, {
-              maxWidth: 260,
-              minWidth: 220,
+            // Add popup using React component
+            const popupNode = document.createElement('div');
+            layer.bindPopup(popupNode, {
+              maxWidth: 300,
+              minWidth: 280,
               className: 'parcel-popup-clean',
               closeButton: true,
               autoPan: true,
+              offset: [0, 0], // Bring popup closer to the point
+            });
+
+            layer.on('popupopen', () => {
+              // Clear any pending unmount timeout
+              if ((layer as any)._popupTimeout) {
+                clearTimeout((layer as any)._popupTimeout);
+                (layer as any)._popupTimeout = null;
+              }
+
+              let root = (layer as any)._popupRoot;
+              if (!root) {
+                root = createRoot(popupNode);
+                (layer as any)._popupRoot = root;
+              }
+              root.render(<ParcelPopup properties={feature.properties} />);
+            });
+
+            layer.on('popupclose', () => {
+              if ((layer as any)._popupRoot) {
+                // Delay unmount to allow for animations, but store timeout ID
+                (layer as any)._popupTimeout = setTimeout(() => {
+                  if ((layer as any)._popupRoot) {
+                    (layer as any)._popupRoot.unmount();
+                    (layer as any)._popupRoot = null;
+                  }
+                  (layer as any)._popupTimeout = null;
+                }, 300);
+              }
             });
 
             // Add tooltip with parcel reference
             layer.bindTooltip(feature.properties.parcel_ref || 'Unknown', {
               permanent: false,
               sticky: true,
+              className: 'parcel-tooltip',
+              direction: 'top',
+              offset: [0, -10],
             });
 
             // Hover effects
             layer.on({
+              click: (e) => {
+                // Force popup to open at click location
+                layer.openPopup(e.latlng);
+                // Close tooltip to avoid clutter
+                layer.closeTooltip();
+              },
               mouseover: (e) => {
                 const target = e.target;
-                target.setStyle({
-                  fillOpacity: 0.8,
-                  weight: 3,
-                });
-                target.bringToFront();
+                // Only apply hover effect if NOT highlighted
+                const isHighlighted = highlightedParcelsRef.current.includes(feature.properties.parcel_ref);
+
+                if (!isHighlighted) {
+                  target.setStyle({
+                    fillOpacity: 0.8,
+                    weight: 3,
+                  });
+                  target.bringToFront();
+                }
               },
               mouseout: (e) => {
-                if (geoJsonLayerRef.current) {
-                  geoJsonLayerRef.current.resetStyle(e.target);
-                }
+                // Explicitly restore style using our helper, avoiding resetStyle reliance
+                const isHighlighted = highlightedParcelsRef.current.includes(feature.properties.parcel_ref);
+                const style = getParcelStyle(feature, isHighlighted);
+                e.target.setStyle(style);
               },
             });
           },
         });
+
+        if (!isMounted.current) return;
 
         // Add to map
         geoJsonLayerRef.current.addTo(map);
@@ -328,18 +270,18 @@ export function ParcelGeoJSONLayer() {
 
         // Fit map to parcels
         const bounds = geoJsonLayerRef.current.getBounds();
-        console.log('🗺️ Parcel bounds:', bounds);
         if (bounds.isValid()) {
           map.fitBounds(bounds, { padding: [50, 50] });
-          console.log('📍 Map fitted to parcel bounds');
         }
 
         // Wait for rendering to complete
         setTimeout(() => {
-          loadingRef.current = false;
-          toast.success(`Loaded ${parcelData.features.length} parcels`, {
-            id: loadingToast,
-          });
+          if (isMounted.current) {
+            loadingRef.current = false;
+            toast.success(`Loaded ${parcelData.features.length} parcels`, {
+              id: loadingToast,
+            });
+          }
         }, 1000); // Give 1 second for rendering
       } catch (error) {
         console.error('Error loading parcels:', error);
@@ -356,7 +298,7 @@ export function ParcelGeoJSONLayer() {
         map.removeLayer(geoJsonLayerRef.current);
       }
     };
-  }, [map, showGrid, isOnSupportedRoute, highlightedParcels]);
+  }, [map, showGrid, isOnSupportedRoute]);
 
   return null;
 }

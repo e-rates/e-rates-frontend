@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { QuickToolsItems, QuickToolItem } from './QuickToolsData';
+import { QuickToolsItems, QuickToolItem as QuickToolItemType } from './QuickToolsData';
 import { useSpring, animated } from '@react-spring/web';
 import { useMapContext } from '../../context/MapContext';
 import axios from 'axios';
@@ -63,8 +63,11 @@ const QuickToolsBar = () => {
       try {
         // Try local DB first
         const { ParcelQueries } = await import('@/lib/db/queries');
-        let parcels = await ParcelQueries.search(searchValue);
-        if (!parcels || parcels.length === 0) {
+        const localParcels = await ParcelQueries.search(searchValue);
+
+        let suggestions: Array<{ parcel_ref: string, owner_username: string }> = [];
+
+        if (!localParcels || localParcels.length === 0) {
           // fallback to backend
           const token = await authService.getValidAccessToken();
           if (!token) return;
@@ -74,18 +77,18 @@ const QuickToolsBar = () => {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
-          parcels = response.data.features?.map((f: any) => ({
+          suggestions = response.data.features?.map((f: any) => ({
             parcel_ref: f.properties.parcel_ref,
             owner_username: f.properties.owner_username || 'No owner',
           })) || [];
         } else {
-          parcels = parcels.map((p: any) => ({
+          suggestions = localParcels.map((p: any) => ({
             parcel_ref: p.parcel_number,
             owner_username: p.owner_name || 'No owner',
           }));
         }
-        setSearchSuggestions(parcels.slice(0, 5));
-        setShowSuggestions(parcels.length > 0);
+        setSearchSuggestions(suggestions.slice(0, 5));
+        setShowSuggestions(suggestions.length > 0);
       } catch (error) {
         console.error('Search suggestions error:', error);
       }
@@ -112,6 +115,7 @@ const QuickToolsBar = () => {
         resetZoom();
         break;
       case 'clear-highlights':
+        console.log('🖱️ QuickTools: Clear Highlights clicked');
         clearHighlights();
         toast.success('Highlights cleared');
         break;
@@ -131,14 +135,47 @@ const QuickToolsBar = () => {
     if (over && active.id !== over.id) {
       setItems((items: typeof QuickToolsItems) => {
         const oldIndex = items.findIndex(
-          (item: QuickToolItem) => item.name === active.id
+          (item: QuickToolItemType) => item.name === active.id
         );
         const newIndex = items.findIndex(
-          (item: QuickToolItem) => item.name === over.id
+          (item: QuickToolItemType) => item.name === over.id
         );
 
         return arrayMove(items, oldIndex, newIndex);
       });
+    }
+  };
+
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
+  // Reset selection when suggestions change
+  useEffect(() => {
+    setSelectedSuggestionIndex(-1);
+  }, [searchSuggestions]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev =>
+        prev < searchSuggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => prev > -1 ? prev - 1 : -1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < searchSuggestions.length) {
+        const suggestion = searchSuggestions[selectedSuggestionIndex];
+        locateParcel(suggestion.parcel_ref);
+        setSearchValue('');
+        setShowSuggestions(false);
+      } else if (searchValue.trim()) {
+        locateParcel(searchValue.trim());
+        setSearchValue('');
+        setShowSuggestions(false);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
     }
   };
 
@@ -181,13 +218,7 @@ const QuickToolsBar = () => {
           placeholder="search parcel by number or owner..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && searchValue.trim()) {
-              locateParcel(searchValue.trim());
-              setSearchValue('');
-              setShowSuggestions(false);
-            }
-          }}
+          onKeyDown={handleKeyDown}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           className="squircle-full dark:border-border-default dark:bg-elevated-surface h-[35px] w-full border border-gray-200 bg-white pr-4 pl-10 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-gray-400 dark:placeholder:text-gray-500 dark:focus:border-gray-600"
@@ -199,12 +230,17 @@ const QuickToolsBar = () => {
             {searchSuggestions.map((suggestion, idx) => (
               <div
                 key={idx}
-                onClick={() => {
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent input blur
+                  console.log('🖱️ Suggestion clicked:', suggestion.parcel_ref);
                   locateParcel(suggestion.parcel_ref);
-                  setSearchValue('');
+                  setSearchValue(suggestion.parcel_ref);
                   setShowSuggestions(false);
                 }}
-                className="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className={`cursor-pointer px-4 py-2 transition-colors ${idx === selectedSuggestionIndex
+                  ? 'bg-gray-100 dark:bg-gray-700'
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
               >
                 <div className="text-sm font-medium text-gray-900 dark:text-white">
                   Parcel {suggestion.parcel_ref}
@@ -226,10 +262,10 @@ const QuickToolsBar = () => {
       >
         <div className="flex items-center gap-2">
           <SortableContext
-            items={items.map((item: QuickToolItem) => item.name)}
+            items={items.map((item: QuickToolItemType) => item.name)}
             strategy={horizontalListSortingStrategy}
           >
-            {items.map((item: QuickToolItem, index: number) => (
+            {items.map((item: QuickToolItemType, index: number) => (
               <QuickToolItem
                 key={item.name}
                 item={item}

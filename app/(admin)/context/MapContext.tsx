@@ -61,7 +61,11 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     owner_user?: string;
   }>({});
   const [highlightedParcels, setHighlightedParcels] = useState<string[]>([]);
-  const clearHighlights = () => setHighlightedParcels([]);
+  const clearHighlights = () => {
+    console.log('🧹 MapContext: clearHighlights called');
+    setHighlightedParcels([]);
+    setSelectedParcel(null);
+  };
 
   const zoomIn = () => {
     if (mapRef.current && isMapInView) {

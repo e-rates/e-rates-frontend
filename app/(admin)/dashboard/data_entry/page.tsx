@@ -25,7 +25,6 @@ import {
   stripDuplicates,
   DuplicateCheckResult,
 } from '@/lib/ml/duplicateDetection';
-import shp from 'shpjs';
 import { BackendGeoJSONFeature } from '@/lib/db/normalize';
 
 const DataEntry = () => {
@@ -76,13 +75,16 @@ const DataEntry = () => {
     }
 
     try {
-      // Step 1: Parse shapefile locally
+      // Step 1: Parse shapefile locally (dynamic import for performance)
       const checkingToast = toast.loading('Checking for duplicates...');
       const zipBuffer = await files[0].arrayBuffer();
+
+      // Dynamically import shpjs only when needed
+      const shp = (await import('shpjs')).default;
       const geojson = (await shp(zipBuffer)) as any;
       const features = geojson.features as BackendGeoJSONFeature[];
 
-      // Step 2: Check for duplicates using TensorFlow
+      // Step 2: Check for duplicates
       const duplicateResult = await checkForDuplicates(features);
       toast.dismiss(checkingToast);
 
@@ -126,7 +128,7 @@ const DataEntry = () => {
       formData.append('ref_field', refField);
       formData.append('status', 'active');
       formData.append('clear_existing', String(clearExisting));
-      
+
       // Log what we're sending for debugging
       console.log('📤 Uploading with params:', {
         area_name: subCounty,
