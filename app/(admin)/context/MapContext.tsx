@@ -112,7 +112,6 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const locateParcel = async (parcelRef: string) => {
     try {
       // Try local DB first
-    const clearHighlights = () => setHighlightedParcels([]);
       const { ParcelQueries } = await import('@/lib/db/queries');
       let parcels = await ParcelQueries.search(parcelRef);
       let feature = null;
@@ -152,13 +151,21 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           toast.error(`Parcel "${parcelRef}" not found`);
           return;
         }
-        feature = geojson.features.find((f: any) => 
-          f.properties.parcel_ref === parcelRef || 
+        feature = geojson.features.find((f: any) =>
+          f.properties.parcel_ref === parcelRef ||
           f.properties.owner_username?.toLowerCase().includes(parcelRef.toLowerCase())
         ) || geojson.features[0];
       }
       if (feature) {
+        // Set selected parcel for zooming
         setSelectedParcel(feature);
+
+        // Add to highlighted parcels for persistent highlighting
+        const parcelRefToHighlight = feature.properties.parcel_ref;
+        if (!highlightedParcels.includes(parcelRefToHighlight)) {
+          setHighlightedParcels([...highlightedParcels, parcelRefToHighlight]);
+        }
+
         toast.success(`Parcel ${feature.properties.parcel_ref} - Owner: ${feature.properties.owner_username || 'Unknown'}`, {
           duration: 3000,
         });

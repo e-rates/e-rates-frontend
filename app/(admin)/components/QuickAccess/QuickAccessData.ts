@@ -8,6 +8,7 @@ import {
   GlobeLock,
   Grid3x2,
   Eye,
+  Eraser,
   LucideIcon,
   MessageCircleMore,
   MessageCircleMoreIcon,
@@ -29,7 +30,7 @@ export const QuickAccessMenuItems: QuickAccessMenuItem[] = [
   { name: 'Calculator', icon: Calculator, href: '/' },
   { name: 'Message', icon: MessageCircleMoreIcon, href: '/' },
   { name: 'Waivers', icon: Bird, href: '/' },
-  { name: 'Parcels', icon: Grid3x2, href: '/' },
+  { name: 'Clear Highlights', icon: Eraser, requiresContext: true },
   {
     name: 'Refresh',
     icon: RefreshCcw,

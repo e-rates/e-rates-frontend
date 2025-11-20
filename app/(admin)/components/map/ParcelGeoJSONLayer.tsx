@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
 import { ParcelDetailsCard } from './ParcelDetailsCard';
+import { parcelService } from '@/lib/parcelService';
 
 // Enhanced popup content with all relevant parcel information
 function createPopupContent(properties: any): string {
@@ -75,26 +76,24 @@ function createPopupContent(properties: any): string {
             <span style="color: #8E8E93;">2025 Paid</span>
             <span style="color: ${isPaidCurrentYear ? '#34C759' : '#FF3B30'}; font-weight: 600;">${isPaidCurrentYear ? '✓ Yes' : '✗ No'}</span>
           </div>
-          ${
-            latestPaymentYear
-              ? `
+          ${latestPaymentYear
+      ? `
           <div style="display: flex; justify-content: space-between; padding: 4px 0;">
             <span style="color: #8E8E93;">Latest Payment</span>
             <span style="color: #000; font-weight: 500;">${latestPaymentYear}</span>
           </div>
           `
-              : ''
-          }
-          ${
-            paidYears.length > 0
-              ? `
+      : ''
+    }
+          ${paidYears.length > 0
+      ? `
           <div style="margin-top: 4px; padding: 4px 6px; background: #F2F2F7; border-radius: 4px;">
             <div style="font-size: 9px; color: #8E8E93; font-weight: 600; margin-bottom: 2px;">PAID YEARS</div>
             <div style="font-size: 11px; color: #000; font-weight: 500;">${paidYears.join(', ')}</div>
           </div>
           `
-              : ''
-          }
+      : ''
+    }
         </div>
         
         <!-- Area -->
@@ -109,16 +108,15 @@ function createPopupContent(properties: any): string {
           </div>
         </div>
         
-        ${
-          properties.centroid
-            ? `
+        ${properties.centroid
+      ? `
         <div style="margin-top: 6px; padding: 4px 6px; background: #F2F2F7; border-radius: 4px;">
           <div style="font-size: 9px; color: #8E8E93; font-weight: 600; margin-bottom: 1px;">CENTROID</div>
           <div style="font-size: 10px; color: #000; font-family: 'SF Mono', monospace;">${properties.centroid.lat?.toFixed(6)}, ${properties.centroid.lng?.toFixed(6)}</div>
         </div>
         `
-            : ''
-        }
+      : ''
+    }
       </div>
     </div>
   `;
@@ -131,35 +129,57 @@ export function ParcelGeoJSONLayer() {
   const { showGrid, selectedParcel, setSelectedParcel, highlightedParcels } = useMapContext();
   const pathname = usePathname();
 
-  // Flash effect: highlight selected parcel with react-spring
-  const [flash, setFlash] = useState(false);
+  // Persistent highlighting: zoom to selected parcel and keep it highlighted
   useEffect(() => {
     if (!selectedParcel || !geoJsonLayerRef.current) return;
-    let flashLayer = null;
-    geoJsonLayerRef.current.eachLayer((layer) => {
-      // @ts-ignore
-      if (layer.feature && (layer.feature.properties.parcel_ref === selectedParcel.properties?.parcel_ref)) {
-        flashLayer = layer;
+
+    const parcelRef = selectedParcel.properties?.parcel_ref || selectedParcel.parcel_ref;
+    if (!parcelRef) return;
+
+    // Find the layer for this parcel
+    let targetLayer: any = null;
+    geoJsonLayerRef.current.eachLayer((layer: any) => {
+      if (layer.feature && layer.feature.properties.parcel_ref === parcelRef) {
+        targetLayer = layer;
       }
     });
-    if (flashLayer) {
-      setFlash(true);
-      flashLayer.setStyle({
-        color: '#FFD600',
-        fillColor: '#FFD600',
-        weight: 5,
-        fillOpacity: 0.9,
-        opacity: 1,
-      });
-      setTimeout(() => {
-        if (geoJsonLayerRef.current && flashLayer) {
-          geoJsonLayerRef.current.resetStyle(flashLayer);
-        }
-        setFlash(false);
-        setSelectedParcel(null);
-      }, 1200);
+
+    if (targetLayer) {
+      // Zoom to the parcel with reasonable zoom level
+      const bounds = targetLayer.getBounds();
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [100, 100], maxZoom: 15, animate: true, duration: 0.5 });
+      }
     }
-  }, [selectedParcel, setSelectedParcel]);
+  }, [selectedParcel, map]);
+
+  // Update styles when highlightedParcels change
+  useEffect(() => {
+    if (!geoJsonLayerRef.current) return;
+
+    geoJsonLayerRef.current.eachLayer((layer: any) => {
+      if (layer.feature) {
+        const parcelRef = layer.feature.properties.parcel_ref;
+        const isHighlighted = highlightedParcels.includes(parcelRef);
+
+        if (isHighlighted) {
+          // Apply highlight style
+          layer.setStyle({
+            color: '#FFD600',
+            fillColor: '#FFD600',
+            weight: 5,
+            fillOpacity: 0.9,
+            opacity: 1,
+          });
+        } else {
+          // Reset to default style
+          if (geoJsonLayerRef.current) {
+            geoJsonLayerRef.current.resetStyle(layer);
+          }
+        }
+      }
+    });
+  }, [highlightedParcels]);
 
   // Check if we're on home or parcels-map routes
   const isOnSupportedRoute =

@@ -4,6 +4,7 @@ import { useSpring, animated } from '@react-spring/web';
 import { useMapContext } from '../../context/MapContext';
 import axios from 'axios';
 import { authService } from '@/lib/auth';
+import toast from 'react-hot-toast';
 import {
   DndContext,
   closestCenter,
@@ -31,9 +32,9 @@ const QuickToolsBar = () => {
   const [items, setItems] = useState(QuickToolsItems);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [searchSuggestions, setSearchSuggestions] = useState<Array<{parcel_ref: string, owner_username: string}>>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<Array<{ parcel_ref: string, owner_username: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { zoomIn, zoomOut, resetZoom, locateParcel } = useMapContext();
+  const { zoomIn, zoomOut, resetZoom, locateParcel, clearHighlights } = useMapContext();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -110,6 +111,10 @@ const QuickToolsBar = () => {
       case 'reset-zoom':
         resetZoom();
         break;
+      case 'clear-highlights':
+        clearHighlights();
+        toast.success('Highlights cleared');
+        break;
       case 'share':
         // Handle share action
         break;
@@ -165,11 +170,10 @@ const QuickToolsBar = () => {
       {/* Search Bar */}
       <div className="relative flex-1">
         <Search
-          className={`absolute top-1/2 left-3 -translate-y-1/2 transition-colors ${
-            searchFocused
-              ? 'text-black dark:text-white'
-              : 'text-gray-400 dark:text-gray-500'
-          }`}
+          className={`absolute top-1/2 left-3 -translate-y-1/2 transition-colors ${searchFocused
+            ? 'text-black dark:text-white'
+            : 'text-gray-400 dark:text-gray-500'
+            }`}
           size={18}
         />
         <input
@@ -188,10 +192,10 @@ const QuickToolsBar = () => {
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           className="squircle-full dark:border-border-default dark:bg-elevated-surface h-[35px] w-full border border-gray-200 bg-white pr-4 pl-10 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-gray-400 dark:placeholder:text-gray-500 dark:focus:border-gray-600"
         />
-        
+
         {/* Suggestions Dropdown */}
         {showSuggestions && searchSuggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800" style={{zIndex: 100000}}>
+          <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800" style={{ zIndex: 100000 }}>
             {searchSuggestions.map((suggestion, idx) => (
               <div
                 key={idx}
@@ -313,11 +317,10 @@ const QuickToolItem = ({
     >
       <animated.div style={springProps} onClick={onClick}>
         <div
-          className={`squircle-md flex h-[35px] w-[35px] cursor-grab items-center justify-center transition-all duration-300 active:cursor-grabbing ${
-            isActive
-              ? 'bg-black text-white dark:bg-white dark:text-black'
-              : 'dark:bg-elevated-surface bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 dark:text-current'
-          }`}
+          className={`squircle-md flex h-[35px] w-[35px] cursor-grab items-center justify-center transition-all duration-300 active:cursor-grabbing ${isActive
+            ? 'bg-black text-white dark:bg-white dark:text-black'
+            : 'dark:bg-elevated-surface bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 dark:text-current'
+            }`}
         >
           <item.icon size={18} />
         </div>
