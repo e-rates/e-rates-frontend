@@ -121,12 +121,20 @@ const DataEntry = () => {
 
       const formData = new FormData();
       formData.append('zip_file', file);
-      formData.append('county', county);
-      formData.append('sub_county', subCounty);
+      formData.append('area_name', subCounty); // Django might expect 'area_name' instead of 'sub_county'
       if (ward) formData.append('ward', ward);
       formData.append('ref_field', refField);
       formData.append('status', 'active');
       formData.append('clear_existing', String(clearExisting));
+      
+      // Log what we're sending for debugging
+      console.log('📤 Uploading with params:', {
+        area_name: subCounty,
+        ward: ward,
+        ref_field: refField,
+        status: 'active',
+        clear_existing: String(clearExisting),
+      });
 
       const loadingToast = toast.loading('Uploading shapefile...');
 
@@ -211,7 +219,7 @@ const DataEntry = () => {
   };
 
   const handleAssignOwners = () => {
-    router.push('/admin/dashboard/parcels-map');
+    router.push('/dashboard/parcels-map?tab=allocate');
   };
 
   const handleStripDuplicates = async () => {

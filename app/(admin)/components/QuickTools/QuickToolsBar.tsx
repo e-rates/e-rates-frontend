@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { QuickToolsItems, QuickToolItem } from './QuickToolsData';
 import { useSpring, animated } from '@react-spring/web';
+import { useMapContext } from '../../context/MapContext';
+import axios from 'axios';
+import { authService } from '@/lib/auth';
 import {
   DndContext,
   closestCenter,
@@ -19,7 +22,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Search } from 'lucide-react';
-import { useMapContext } from '../../context/MapContext';
 
 const QuickToolsBar = () => {
   const [mounted, setMounted] = useState(false);
@@ -28,7 +30,10 @@ const QuickToolsBar = () => {
   const [clickedIndex, setClickedIndex] = useState<number | null>(null);
   const [items, setItems] = useState(QuickToolsItems);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { zoomIn, zoomOut, resetZoom } = useMapContext();
+  const [searchValue, setSearchValue] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState<Array<{parcel_ref: string, owner_username: string}>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { zoomIn, zoomOut, resetZoom, locateParcel } = useMapContext();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -44,6 +49,49 @@ const QuickToolsBar = () => {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Debounced search for suggestions (local DB first)
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (searchValue.length < 2) {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      try {
+        // Try local DB first
+        const { ParcelQueries } = await import('@/lib/db/queries');
+        let parcels = await ParcelQueries.search(searchValue);
+        if (!parcels || parcels.length === 0) {
+          // fallback to backend
+          const token = await authService.getValidAccessToken();
+          if (!token) return;
+          const response = await axios.get(
+            `http://127.0.0.1:8080/api/parcels/geojson/?search=${encodeURIComponent(searchValue)}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          parcels = response.data.features?.map((f: any) => ({
+            parcel_ref: f.properties.parcel_ref,
+            owner_username: f.properties.owner_username || 'No owner',
+          })) || [];
+        } else {
+          parcels = parcels.map((p: any) => ({
+            parcel_ref: p.parcel_number,
+            owner_username: p.owner_name || 'No owner',
+          }));
+        }
+        setSearchSuggestions(parcels.slice(0, 5));
+        setShowSuggestions(parcels.length > 0);
+      } catch (error) {
+        console.error('Search suggestions error:', error);
+      }
+    };
+    const debounce = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(debounce);
+  }, [searchValue]);
 
   const handleClick = (index: number) => {
     setClickedIndex(index);
@@ -110,6 +158,8 @@ const QuickToolsBar = () => {
       className="flex h-full w-full items-center gap-3 px-4"
       style={{
         animation: 'blurIn 0.4s ease-out forwards',
+        position: 'relative',
+        zIndex: 100000,
       }}
     >
       {/* Search Bar */}
@@ -124,11 +174,44 @@ const QuickToolsBar = () => {
         />
         <input
           type="text"
-          placeholder="search anything ..."
+          placeholder="search parcel by number or owner..."
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && searchValue.trim()) {
+              locateParcel(searchValue.trim());
+              setSearchValue('');
+              setShowSuggestions(false);
+            }
+          }}
           onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           className="squircle-full dark:border-border-default dark:bg-elevated-surface h-[35px] w-full border border-gray-200 bg-white pr-4 pl-10 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-gray-400 dark:placeholder:text-gray-500 dark:focus:border-gray-600"
         />
+        
+        {/* Suggestions Dropdown */}
+        {showSuggestions && searchSuggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800" style={{zIndex: 100000}}>
+            {searchSuggestions.map((suggestion, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  locateParcel(suggestion.parcel_ref);
+                  setSearchValue('');
+                  setShowSuggestions(false);
+                }}
+                className="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  Parcel {suggestion.parcel_ref}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Owner: {suggestion.owner_username}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Quick Tools */}

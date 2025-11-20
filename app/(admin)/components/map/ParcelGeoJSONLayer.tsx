@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useSpring, animated } from '@react-spring/web';
 import { useMap } from 'react-leaflet';
-import L from 'leaflet';
-import { parcelService } from '@/lib/parcelService';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
@@ -129,8 +128,38 @@ export function ParcelGeoJSONLayer() {
   const map = useMap();
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const loadingRef = useRef(false);
-  const { showGrid, selectedParcel, setSelectedParcel } = useMapContext();
+  const { showGrid, selectedParcel, setSelectedParcel, highlightedParcels } = useMapContext();
   const pathname = usePathname();
+
+  // Flash effect: highlight selected parcel with react-spring
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (!selectedParcel || !geoJsonLayerRef.current) return;
+    let flashLayer = null;
+    geoJsonLayerRef.current.eachLayer((layer) => {
+      // @ts-ignore
+      if (layer.feature && (layer.feature.properties.parcel_ref === selectedParcel.properties?.parcel_ref)) {
+        flashLayer = layer;
+      }
+    });
+    if (flashLayer) {
+      setFlash(true);
+      flashLayer.setStyle({
+        color: '#FFD600',
+        fillColor: '#FFD600',
+        weight: 5,
+        fillOpacity: 0.9,
+        opacity: 1,
+      });
+      setTimeout(() => {
+        if (geoJsonLayerRef.current && flashLayer) {
+          geoJsonLayerRef.current.resetStyle(flashLayer);
+        }
+        setFlash(false);
+        setSelectedParcel(null);
+      }, 1200);
+    }
+  }, [selectedParcel, setSelectedParcel]);
 
   // Check if we're on home or parcels-map routes
   const isOnSupportedRoute =
@@ -176,6 +205,18 @@ export function ParcelGeoJSONLayer() {
             const status = feature?.properties?.status?.toLowerCase();
             const paymentStatus = feature?.properties?.payment_status;
             const isPaidCurrentYear = feature?.properties?.is_paid_current_year;
+            const parcelRef = feature?.properties?.parcel_ref;
+
+            // Highlight if in highlightedParcels
+            if (highlightedParcels && highlightedParcels.includes(parcelRef)) {
+              return {
+                fillColor: '#FFD600',
+                fillOpacity: 0.9,
+                color: '#FFD600',
+                weight: 5,
+                opacity: 1,
+              };
+            }
 
             let color = '#2bc76f'; // Default green for active & paid
 
@@ -295,7 +336,7 @@ export function ParcelGeoJSONLayer() {
         map.removeLayer(geoJsonLayerRef.current);
       }
     };
-  }, [map, showGrid, isOnSupportedRoute]);
+  }, [map, showGrid, isOnSupportedRoute, highlightedParcels]);
 
   return null;
 }
