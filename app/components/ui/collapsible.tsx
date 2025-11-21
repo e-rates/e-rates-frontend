@@ -1,7 +1,25 @@
 'use client';
 
 import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import { cn } from '@/lib/utils';
+
+interface CollapsibleContextValue {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+const CollapsibleContext = React.createContext<CollapsibleContextValue | undefined>(
+  undefined
+);
+
+const useCollapsible = () => {
+  const context = React.useContext(CollapsibleContext);
+  if (!context) {
+    throw new Error('useCollapsible must be used within a Collapsible');
+  }
+  return context;
+};
 
 interface CollapsibleProps extends React.HTMLAttributes<HTMLDivElement> {
   open?: boolean;
@@ -18,61 +36,60 @@ const Collapsible = React.forwardRef<HTMLDivElement, CollapsibleProps>(
       }
     }, [open]);
 
-    const handleToggle = (newState: boolean) => {
+    const handleToggle = React.useCallback(() => {
+      const newState = !isOpen;
       setIsOpen(newState);
       onOpenChange?.(newState);
-    };
+    }, [isOpen, onOpenChange]);
 
     return (
-      <div ref={ref} {...props}>
-        {React.Children.map(children, (child) => {
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as React.ReactElement<any>, {
-              isOpen,
-              onToggle: handleToggle,
-            });
-          }
-          return child;
-        })}
-      </div>
+      <CollapsibleContext.Provider value={{ isOpen, onToggle: handleToggle }}>
+        <div ref={ref} {...props}>
+          {children}
+        </div>
+      </CollapsibleContext.Provider>
     );
   }
 );
 Collapsible.displayName = 'Collapsible';
 
-// Omit any existing 'onToggle' from the native button props to avoid
-// a type conflict with our simplified onToggle signature
 interface CollapsibleTriggerProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onToggle'> {
-  isOpen?: boolean;
-  onToggle?: (open: boolean) => void;
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
 }
 
 const CollapsibleTrigger = React.forwardRef<
   HTMLButtonElement,
   CollapsibleTriggerProps
->(({ isOpen, onToggle, children, className, ...props }, ref) => {
+>(({ children, className, asChild = false, onClick, ...props }, ref) => {
+  const { isOpen, onToggle } = useCollapsible();
+  const Comp = asChild ? Slot : 'button';
+
   return (
-    <button
+    <Comp
       ref={ref}
-      onClick={() => onToggle?.(!isOpen)}
-      className={cn('w-full', className)}
+      onClick={(e) => {
+        onClick?.(e);
+        onToggle();
+      }}
+      className={cn(asChild ? '' : 'w-full', className)}
+      data-state={isOpen ? 'open' : 'closed'}
       {...props}
     >
       {children}
-    </button>
+    </Comp>
   );
 });
 CollapsibleTrigger.displayName = 'CollapsibleTrigger';
 
-interface CollapsibleContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  isOpen?: boolean;
-}
+interface CollapsibleContentProps extends React.HTMLAttributes<HTMLDivElement> { }
 
 const CollapsibleContent = React.forwardRef<
   HTMLDivElement,
   CollapsibleContentProps
->(({ isOpen, children, className, ...props }, ref) => {
+>(({ children, className, ...props }, ref) => {
+  const { isOpen } = useCollapsible();
+
   return (
     <div
       ref={ref}
@@ -81,6 +98,7 @@ const CollapsibleContent = React.forwardRef<
         isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0',
         className
       )}
+      data-state={isOpen ? 'open' : 'closed'}
       {...props}
     >
       {children}
