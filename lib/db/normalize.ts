@@ -43,26 +43,22 @@ export interface BackendGeoJSON {
 export function normalizeParcelFromBackend(feature: BackendGeoJSONFeature) {
   const props = feature.properties;
 
+  // Backend uses: parcel_id, owner_username, parcel_ref, area_m2, owner_user
   return {
-    id: props.id || props.parcel_number || feature.id?.toString() || '',
-    parcel_number:
-      props.parcel_number || props.parcel_ref || props.props?.Parcel_No || '',
-    owner_name: props.owner_name || props.owner_username || '',
+    id: (props as any).parcel_id || props.id || feature.id?.toString() || '',
+    parcel_number: (props as any).parcel_ref || props.parcel_number || props.props?.Parcel_No || '',
+    owner_name: props.owner_username || props.owner_name || (props as any).owner_email || '',
     owner_phone: props.owner_phone || '',
     property_type: props.property_type || '',
-    area: props.area || props.area_m2 || 0,
+    area: props.area_m2 || props.area || 0,
     rate_per_unit: props.rate_per_unit || 0,
     total_amount: props.total_amount || 0,
     status: props.status || 'active',
-    zone: props.zone || props.props?.area_name || '',
+    zone: props.zone || props.props?.area_name || props.props?.REG_SECTIO || '',
     coordinates: JSON.stringify(feature.geometry?.coordinates),
-    centroid: props.centroid || null, // Store centroid from backend
-    geojson: feature.geometry, // Store as object, not string!
-    created_at: props.created_at
-      ? new Date(props.created_at).getTime()
-      : Date.now(),
-    updated_at: props.updated_at
-      ? new Date(props.updated_at).getTime()
-      : Date.now(),
+    centroid: props.centroid || null,
+    geojson: feature.geometry,
+    created_at: props.created_at ? new Date(props.created_at).getTime() : Date.now(),
+    updated_at: props.updated_at ? new Date(props.updated_at).getTime() : Date.now(),
   };
 }

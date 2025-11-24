@@ -188,13 +188,17 @@ export function ParcelGeoJSONLayer() {
             layer.on('click', (e) => {
               L.DomEvent.stopPropagation(e);
               const props = feature.properties || {};
+              
+              // Extract area - backend sends area_m2, local DB has area
+              const area_m2 = props.area_m2 || props.area || 0;
+              
               setSelectedParcel({
                 id: feature.id,
                 parcel_ref: props.parcel_ref || props.parcel_number || 'Unknown',
-                owner_username: props.owner_username || props.owner_user || props.owner_name || 'Unknown',
+                owner_username: props.owner_username || props.owner_name || 'No owner',
                 owner_id: props.owner_id || props.owner_user || '',
-                area_m2: props.area_m2 || props.area || 0,
-                area_acres: props.area_acres || (props.area_m2 ? props.area_m2 / 4046.86 : 0),
+                area_m2: area_m2,
+                area_acres: props.area_acres || (area_m2 / 4046.86),
                 status: props.status || 'active',
                 centroid: props.centroid || null,
                 is_paid_current_year: props.is_paid_current_year || false,

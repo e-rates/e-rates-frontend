@@ -152,13 +152,13 @@ const DataEntry = () => {
       formData.append('auto_generate_ref', 'true'); // Enable auto-generation
       if (sourceEpsg) {
         formData.append('source_epsg', String(sourceEpsg)); // Add EPSG
-        console.log('🔍 Uploading with source_epsg:', sourceEpsg);
+        console.log('Uploading with source_epsg:', sourceEpsg);
       } else {
-        console.log('⚠️ No source_epsg provided');
+        console.log(' No source_epsg provided');
       }
 
       // Log what we're sending for debugging
-      console.log('📤 Uploading with params:', {
+      console.log(' Uploading with params:', {
         area_name: subCounty,
         ward: ward,
         ref_field: refField,
@@ -189,7 +189,7 @@ const DataEntry = () => {
           } else {
             try {
               const errorData = JSON.parse(xhr.responseText);
-              console.error('❌ Backend error response:', errorData);
+              console.error(' Backend error response:', errorData);
               // Create error with full response as JSON string for parsing later
               const error = new Error(errorData.message || 'Upload failed');
               (error as any).fullResponse = errorData;
@@ -234,7 +234,7 @@ const DataEntry = () => {
       // First check if error has fullResponse property from backend
       if (error.fullResponse) {
         errorResult = error.fullResponse;
-        console.log('📦 Using fullResponse:', errorResult);
+        console.log('Using fullResponse:', errorResult);
       } else {
         // Fallback: try to parse from error message
         try {
@@ -562,7 +562,7 @@ const DataEntry = () => {
                   {/* Shapefile Info Display */}
                   {shapefileInfo && (
                     <div className="w-full max-w-3xl rounded-lg border border-border bg-card p-4">
-                      <h4 className="font-medium mb-2">📊 Shapefile Information</h4>
+                      <h4 className="font-medium mb-2">Shapefile Information</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>Features:</div>
                         <div className="font-mono">{shapefileInfo.feature_count}</div>
@@ -575,18 +575,18 @@ const DataEntry = () => {
                           {shapefileInfo.srid ? (
                             <span className="text-green-600">EPSG:{shapefileInfo.srid}</span>
                           ) : (
-                            <span className="text-yellow-600">⚠️ Not defined</span>
+                            <span className="text-yellow-600"> Not defined</span>
                           )}
                         </div>
                         
                         <div>Status:</div>
                         <div>
                           {shapefileInfo.srid === 4326 ? (
-                            <span className="text-green-600">✅ WGS84 - Ready</span>
+                            <span className="text-green-600"> WGS84 - Ready</span>
                           ) : shapefileInfo.needs_manual_epsg ? (
-                            <span className="text-yellow-600">⚠️ Needs EPSG</span>
+                            <span className="text-yellow-600"> Needs EPSG</span>
                           ) : (
-                            <span className="text-blue-600">🔄 Will reproject</span>
+                            <span className="text-blue-600"> Will reproject</span>
                           )}
                         </div>
                       </div>

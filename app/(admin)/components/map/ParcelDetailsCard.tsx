@@ -44,6 +44,14 @@ export function ParcelDetailsCard({ parcel, onClose }: ParcelDetailsCardProps) {
 
   if (!parcel) return null;
 
+  // Debug logging
+  console.log('🔍 Inspector parcel data:', parcel);
+  console.log('📐 Area fields:', {
+    area_m2: parcel.area_m2,
+    area: (parcel as any).area,
+    area_acres: parcel.area_acres,
+  });
+
   // Helper to extract coordinates from different centroid formats
   const getCentroid = () => {
     if (!parcel.centroid) return { lat: 0, lng: 0 };
@@ -70,12 +78,9 @@ export function ParcelDetailsCard({ parcel, onClose }: ParcelDetailsCardProps) {
   const centroid = getCentroid();
 
   // Calculate area values with fallback
-  const area_m2 = parcel.area_m2 || parcel.area || 0;
+  const area_m2 = parcel.area_m2 || (parcel as any).area || 0;
   const area_acres = parcel.area_acres || area_m2 / 4046.86;
   const area_ha = area_m2 / 10000; // Convert m² to hectares
-
-  // Convert area to hectares (1 hectare = 10,000 m²)
-  const areaHectares = (parcel.area_m2 / 10000).toFixed(2);
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-gray-800 bg-[#1c1c1e] shadow-lg">
@@ -97,7 +102,7 @@ export function ParcelDetailsCard({ parcel, onClose }: ParcelDetailsCardProps) {
 
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-base font-semibold text-white">
-              {parcel.owner_username || 'Unknown Owner'}
+              {parcel.owner_username || (parcel as any).owner_name || 'No owner'}
             </h3>
             <p className="truncate text-xs text-gray-400">
               {parcel.custom_props?.area_name ||
@@ -111,7 +116,7 @@ export function ParcelDetailsCard({ parcel, onClose }: ParcelDetailsCardProps) {
         <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/20 px-3 py-1.5">
           <span className="text-xs font-medium text-gray-400">Parcel No</span>
           <span className="text-sm font-bold text-blue-400">
-            {parcel.parcel_ref}
+            {parcel.parcel_ref || (parcel as any).parcel_number}
           </span>
         </div>
       </div>

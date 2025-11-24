@@ -5,6 +5,7 @@ import { Search, User, MapPin, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '@/lib/auth';
 import axios from 'axios';
+import { ParcelQueries } from '@/lib/db/queries';
 
 export const AllocateParcel = () => {
   const [parcelSearch, setParcelSearch] = useState('');
@@ -26,25 +27,18 @@ export const AllocateParcel = () => {
       return;
     }
 
-    console.log('🔍 Searching for parcels:', searchTerm);
+    console.log('🔍 Searching for parcels locally:', searchTerm);
     setIsSearchingParcels(true);
     try {
-      const token = await authService.getValidAccessToken();
-      console.log('🔑 Got token:', token ? 'yes' : 'no');
+      // Search in local database
+      const results = await ParcelQueries.search(searchTerm);
+      console.log('✅ Found parcels:', results.length);
       
-      const response = await axios.get(
-        `/api/admin/parcels/available_for_allocation?search=${searchTerm}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      console.log('✅ Parcel response:', response.data);
-      setParcels(response.data.parcels || response.data || []);
+      setParcels(results);
       setShowParcelDropdown(true);
     } catch (error: any) {
       console.error('❌ Parcel search error:', error);
-      console.error('Error details:', error.response?.data);
+      toast.error('Failed to search parcels');
       setParcels([]);
       setShowParcelDropdown(false);
     } finally {
@@ -66,18 +60,21 @@ export const AllocateParcel = () => {
       console.log('🔑 Got token:', token ? 'yes' : 'no');
       
       const response = await axios.get(
-        `/api/admin/parcels/available_users?search=${searchTerm}`,
+        `/api/admin/users?search=${searchTerm}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       console.log('✅ User response:', response.data);
-      setUsers(response.data.users || response.data || []);
+      // Backend should return array of users, handle both formats
+      const userList = Array.isArray(response.data) ? response.data : (response.data.users || response.data.results || []);
+      setUsers(userList);
       setShowUserDropdown(true);
     } catch (error: any) {
       console.error('❌ User search error:', error);
       console.error('Error details:', error.response?.data);
+      toast.error('Failed to search users');
       setUsers([]);
       setShowUserDropdown(false);
     } finally {
@@ -119,7 +116,7 @@ export const AllocateParcel = () => {
 
   const handleSelectParcel = (parcel: any) => {
     setSelectedParcel(parcel);
-    setParcelSearch(parcel.parcel_ref || parcel.parcel_number);
+    setParcelSearch(parcel.parcel_number);
     setShowParcelDropdown(false);
   };
 
@@ -143,19 +140,27 @@ export const AllocateParcel = () => {
     setIsAllocating(true);
     try {
       const token = await authService.getValidAccessToken();
+      
+      // Backend expects: parcel_id (UUID) and user_id (UUID)
+      const payload = {
+        parcel_id: String(selectedParcel.id), // This is the parcel_id from backend
+        user_id: String(selectedUser.id || selectedUser.user_id),
+      };
+      
+      console.log('📤 Sending allocation request:', payload);
+      console.log('Selected Parcel:', selectedParcel);
+      console.log('Selected User:', selectedUser);
+      
       await axios.post(
         `/api/admin/parcels/allocate_parcel`,
-        {
-          parcel_id: selectedParcel.parcel_id || selectedParcel.id,
-          user_id: selectedUser.user_id || selectedUser.id,
-        },
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       toast.success(
-        `Parcel ${selectedParcel.parcel_ref || selectedParcel.parcel_number} allocated to ${selectedUser.username || selectedUser.phone_number}`
+        `Parcel ${selectedParcel.parcel_number} allocated to ${selectedUser.username || selectedUser.phone_number}`
       );
 
       // Sync local database to update with new allocation
@@ -177,10 +182,17 @@ export const AllocateParcel = () => {
       setParcelSearch('');
       setUserSearch('');
     } catch (error: any) {
-      console.error('Allocation error:', error);
-      toast.error(
-        error.response?.data?.error || error.response?.data?.message || 'Failed to allocate parcel'
-      );
+      console.error('❌ Allocation error:', error);
+      console.error('Response status:', error.response?.status);
+      console.error('Response data:', error.response?.data);
+      console.error('Response headers:', error.response?.headers);
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          'Failed to allocate parcel';
+      
+      toast.error(errorMessage);
     } finally {
       setIsAllocating(false);
     }
@@ -225,15 +237,15 @@ export const AllocateParcel = () => {
               <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-background shadow-lg">
                 {parcels.map((parcel, index) => (
                   <div
-                    key={parcel.parcel_id || index}
+                    key={parcel.id || index}
                     onClick={() => handleSelectParcel(parcel)}
                     className="cursor-pointer border-b px-4 py-3 hover:bg-accent last:border-b-0"
                   >
                     <p className="font-semibold">
-                      {parcel.parcel_ref || parcel.parcel_number}
+                      {parcel.parcel_number}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {parcel.area_name || parcel.zone || parcel.ward || 'No area'} • Available
+                      {parcel.owner_name || 'No owner'} • {parcel.zone || 'No zone'}
                     </p>
                   </div>
                 ))}
@@ -256,7 +268,7 @@ export const AllocateParcel = () => {
           {selectedParcel && (
             <div className="rounded-md bg-primary/10 p-3">
               <p className="text-sm font-medium text-primary">
-                Selected: {selectedParcel.parcel_ref || selectedParcel.parcel_number}
+                Selected: {selectedParcel.parcel_number}
               </p>
             </div>
           )}

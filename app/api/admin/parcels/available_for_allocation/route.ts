@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     if (ward) params.append('ward', ward);
 
     const queryString = params.toString();
-    const url = `http://127.0.0.1:8080/api/parcels/available_for_allocation/${queryString ? `?${queryString}` : ''}`;
+    const url = `http://127.0.0.1:8000/api/parcels/available_for_allocation/${queryString ? `?${queryString}` : ''}`;
 
     const response = await fetch(url, {
       headers: {

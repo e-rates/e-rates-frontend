@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (search) params.append('search', search);
 
     const queryString = params.toString();
-    const url = `http://127.0.0.1:8000/api/parcels/available_users/${queryString ? `?${queryString}` : ''}`;
+    const url = `http://127.0.0.1:8000/api/users/${queryString ? `?${queryString}` : ''}`;
 
     const response = await fetch(url, {
       headers: {
@@ -29,14 +29,14 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.detail || 'Failed to fetch available users' },
+        { error: data.detail || 'Failed to fetch users' },
         { status: response.status }
       );
     }
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Available users error:', error);
+    console.error('Users fetch error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
