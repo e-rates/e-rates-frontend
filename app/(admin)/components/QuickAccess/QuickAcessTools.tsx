@@ -25,6 +25,8 @@ import CoordinateSearch from './CoordinateSearch';
 import { ParcelDetailsCard } from '../map/ParcelDetailsCard';
 import { NotificationsComponent } from './NotificationsComponent';
 
+import toast from 'react-hot-toast';
+
 const QuickAcessTools = () => {
   const [mounted, setMounted] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -40,6 +42,7 @@ const QuickAcessTools = () => {
     isMapLocked,
     selectedParcel,
     setSelectedParcel,
+    clearHighlights,
   } = useMapContext();
   const pathname = usePathname();
 
@@ -89,6 +92,14 @@ const QuickAcessTools = () => {
     // Handle LockView toggle
     if (item.name === 'LockView' && item.requiresContext) {
       toggleMapLock();
+      return;
+    }
+
+    // Handle Clear Highlights
+    if (item.name === 'Clear Highlights' && item.requiresContext) {
+      console.log('🖱️ QuickAccess: Clear Highlights clicked');
+      clearHighlights();
+      toast.success('Highlights cleared');
       return;
     }
 
@@ -288,28 +299,25 @@ const QuickAccessItem = ({
         onClick={disabled ? undefined : onClick}
       >
         <div
-          className={`squircle-md relative flex h-[38px] w-[38px] flex-col items-center justify-center border-[0.5px] transition-all duration-300 ${
-            disabled
-              ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400 opacity-30 dark:border-gray-700 dark:bg-gray-800'
-              : isActive
-                ? 'cursor-grab border-[#007AFF] bg-[#007AFF] text-white active:cursor-grabbing'
-                : 'dark:border-border-default dark:bg-elevated-surface cursor-grab border-gray-200 bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 active:cursor-grabbing dark:text-current'
-          }`}
+          className={`squircle-md relative flex h-[38px] w-[38px] flex-col items-center justify-center border-[0.5px] transition-all duration-300 ${disabled
+            ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400 opacity-30 dark:border-gray-700 dark:bg-gray-800'
+            : isActive
+              ? 'cursor-grab border-[#007AFF] bg-[#007AFF] text-white active:cursor-grabbing'
+              : 'dark:border-border-default dark:bg-elevated-surface cursor-grab border-gray-200 bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 active:cursor-grabbing dark:text-current'
+            }`}
         >
           <item.icon size={20} />
         </div>
       </animated.div>
       {isHovered && !isDragging && (
         <div
-          className={`squircle-lg text-regular-md absolute z-50 bg-black px-3 py-1.5 whitespace-nowrap text-white shadow-lg ${
-            isBottomRow ? 'bottom-full mb-2' : 'top-full mt-2'
-          } ${
-            isLeftEdge
+          className={`squircle-lg text-regular-md absolute z-50 bg-black px-3 py-1.5 whitespace-nowrap text-white shadow-lg ${isBottomRow ? 'bottom-full mb-2' : 'top-full mt-2'
+            } ${isLeftEdge
               ? 'left-0'
               : isRightEdge
                 ? 'right-0'
                 : 'left-1/2 -translate-x-1/2'
-          }`}
+            }`}
         >
           {item.name}
         </div>

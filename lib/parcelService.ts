@@ -2,10 +2,12 @@ import { authService } from './auth';
 import axios from 'axios';
 import { ParcelQueries } from './db/queries';
 import { syncService } from './db/sync';
-import { initDB } from './db/init';
+import { initDB, getDB, getMetadata, setMetadata } from './db/init';
+import { normalizeParcelFromBackend } from './db/normalize';
 
 const API_BASE_URL = '/api';
 const USE_LOCAL_DB = typeof window !== 'undefined';
+const SYNC_CHECK_INTERVAL = 5000; // Check backend every 5 seconds
 
 export interface ParcelFilters {
   area_name?: string;
@@ -53,24 +55,30 @@ export interface ParcelGeoJSON {
 
 export const parcelService = {
   async getAllParcels(filters: ParcelFilters = {}): Promise<ParcelGeoJSON> {
-    // Use local DB if available and has data
+    // Use local DB if available and has data, but verify with backend periodically
     if (USE_LOCAL_DB) {
       try {
         await initDB();
 
-        // Return from local DB
-        let parcels = await ParcelQueries.getAll();
+        // Get local data
+        const localParcels = await ParcelQueries.getAll();
+        const cachedCount = await getMetadata('parcels_count');
+        const lastSyncStr = await getMetadata('last_sync');
+        const lastSync = lastSyncStr ? parseInt(lastSyncStr) : 0;
+        const timeSinceSync = Date.now() - lastSync;
 
-        // If local DB is empty, fall back to API to fetch and cache
-        if (parcels.length === 0) {
-          console.log('📭 Local DB is empty, fetching from API...');
-          // Don't return here, fall through to API call below
-        } else {
-          console.log(
-            `📦 Found ${parcels.length} parcels in local DB - returning instantly`
-          );
+        console.log(`💾 Local DB has ${localParcels.length} parcels (cached: ${cachedCount}, last sync: ${timeSinceSync}ms ago)`);
 
-          // Apply filters
+        // Only check backend if:
+        // 1. Cache is empty, OR
+        // 2. More than SYNC_CHECK_INTERVAL has passed since last check
+        const shouldCheckBackend = localParcels.length === 0 || timeSinceSync > SYNC_CHECK_INTERVAL;
+
+        if (!shouldCheckBackend && localParcels.length > 0) {
+          console.log('⚡ Using cached data (sync check skipped)');
+
+          // Apply filters client-side
+          let parcels = localParcels;
           if (filters.search) {
             parcels = await ParcelQueries.search(filters.search);
           } else if (filters.area_name) {
@@ -78,18 +86,16 @@ export const parcelService = {
           } else if (filters.status) {
             parcels = await ParcelQueries.getByStatus(filters.status);
           } else if (filters.owner_user) {
-            parcels = parcels.filter(
-              (p) => p.owner_name === filters.owner_user
-            );
+            parcels = parcels.filter((p) => p.owner_name === filters.owner_user);
           }
 
-          // Convert to GeoJSON (no parsing needed - geojson is already an object!)
+          // Convert to GeoJSON
           return {
             type: 'FeatureCollection',
             features: parcels.map((p) => ({
               id: p.id,
               type: 'Feature',
-              geometry: p.geojson || null, // Already an object, no JSON.parse needed!
+              geometry: p.geojson || null,
               properties: {
                 owner_user: p.owner_name || '',
                 owner_username: p.owner_name || '',
@@ -107,6 +113,95 @@ export const parcelService = {
               },
             })),
           };
+        }
+
+        // Check backend for changes
+        const token = await authService.getValidAccessToken();
+        if (!token) {
+          throw new Error('No authentication token available. Please log in.');
+        }
+
+        // Build params for backend check
+        const params: Record<string, string> = {};
+        if (filters.area_name) params.area_name = filters.area_name;
+        if (filters.status) params.status = filters.status;
+        if (filters.search) params.search = filters.search;
+        if (filters.owner_user) params.owner_user = filters.owner_user;
+
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${API_BASE_URL}/parcels/geojson/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('🔍 Checking backend for data changes...');
+        const response = await axios.get(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const backendCount = response.data?.features?.length || 0;
+        console.log(`🌐 Backend: ${backendCount} parcels`);
+
+        // Update last sync timestamp
+        await setMetadata('last_sync', Date.now().toString());
+
+        // If counts match and we have local data and no filters, use cache
+        if (localParcels.length > 0 && localParcels.length === backendCount && Object.keys(params).length === 0) {
+          console.log('✅ Cache is up-to-date, using local data');
+
+          // Convert to GeoJSON
+          return {
+            type: 'FeatureCollection',
+            features: localParcels.map((p) => ({
+              id: p.id,
+              type: 'Feature',
+              geometry: p.geojson || null,
+              properties: {
+                owner_user: p.owner_name || '',
+                owner_username: p.owner_name || '',
+                parcel_ref: p.parcel_number,
+                centroid: p.centroid || { type: 'Point', coordinates: [0, 0] },
+                area_m2: p.area || 0,
+                status: p.status || 'active',
+                props: {
+                  area_name: p.zone || '',
+                  Parcel_No: p.parcel_number,
+                  REG_SECTIO: '',
+                },
+                created_at: new Date(p.created_at || 0).toISOString(),
+                updated_at: new Date(p.updated_at || 0).toISOString(),
+              },
+            })),
+          };
+        } else {
+          console.log('🔄 Cache outdated or filters applied, updating from backend');
+          
+          // Update cache with new data
+          if (backendCount > 0) {
+            console.log('💾 Updating local cache...');
+            const db = await getDB();
+            
+            // Clear old data if count changed
+            if (localParcels.length !== backendCount) {
+              await db.clear('parcels');
+            }
+            
+            const tx = db.transaction('parcels', 'readwrite');
+            for (const feature of response.data.features) {
+              const normalized = normalizeParcelFromBackend(feature);
+              await tx.store.put(normalized);
+            }
+            await tx.done;
+            
+            await setMetadata('parcels_count', backendCount.toString());
+            console.log(`✅ Cache updated with ${backendCount} parcels`);
+          } else if (backendCount === 0 && localParcels.length > 0) {
+            // Backend has no data, clear local cache
+            console.log('🗑️ Backend is empty, clearing local cache');
+            const db = await getDB();
+            await db.clear('parcels');
+            await setMetadata('parcels_count', '0');
+          }
+          
+          // Return backend data
+          return response.data;
         }
       } catch (dbError) {
         console.warn('Local DB query failed, falling back to API:', dbError);

@@ -34,6 +34,10 @@ interface MapContextType {
     search?: string;
     owner_user?: string;
   }) => void;
+  locateParcel: (parcelRef: string) => Promise<void>;
+  highlightedParcels: string[];
+  setHighlightedParcels: (refs: string[]) => void;
+  clearHighlights: () => void;
 }
 
 const MapContext = createContext<MapContextType | null>(null);
@@ -44,6 +48,9 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const [showGrid, setShowGrid] = useState(false);
   const [gridRedrawTrigger, setGridRedrawTrigger] = useState(0);
   const [showBaseMap, setShowBaseMap] = useState(true);
+  const toggleBaseMap = () => {
+    setShowBaseMap((prev) => !prev);
+  };
   const [isMapLocked, setIsMapLocked] = useState(false);
   const [showParcels, setShowParcels] = useState(true);
   const [selectedParcel, setSelectedParcel] = useState<any | null>(null);
@@ -53,6 +60,12 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
     search?: string;
     owner_user?: string;
   }>({});
+  const [highlightedParcels, setHighlightedParcels] = useState<string[]>([]);
+  const clearHighlights = () => {
+    console.log('🧹 MapContext: clearHighlights called');
+    setHighlightedParcels([]);
+    setSelectedParcel(null);
+  };
 
   const zoomIn = () => {
     if (mapRef.current && isMapInView) {
@@ -92,17 +105,81 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
   const triggerGridRedraw = () => {
     setGridRedrawTrigger((prev) => prev + 1);
   };
-
-  const toggleBaseMap = () => {
-    setShowBaseMap((prev) => !prev);
-  };
-
   const toggleMapLock = () => {
     setIsMapLocked((prev) => !prev);
   };
 
   const toggleParcels = () => {
     setShowParcels((prev) => !prev);
+  };
+
+  const locateParcel = async (parcelRef: string) => {
+    try {
+      // Try local DB first
+      const { ParcelQueries } = await import('@/lib/db/queries');
+      let parcels = await ParcelQueries.search(parcelRef);
+      let feature = null;
+      if (parcels && parcels.length > 0) {
+        // Use local DB geometry
+        const p = parcels[0];
+        feature = {
+          id: p.id,
+          type: 'Feature',
+          geometry: p.geojson,
+          properties: {
+            owner_user: p.owner_name || '',
+            owner_username: p.owner_name || '',
+            parcel_ref: p.parcel_number,
+            centroid: p.centroid || { type: 'Point', coordinates: [0, 0] },
+            area_m2: p.area || 0,
+            status: p.status || 'active',
+            ...p,
+          },
+        };
+      } else {
+        // fallback to backend
+        const axios = (await import('axios')).default;
+        const { authService } = await import('@/lib/auth');
+        const token = await authService.getValidAccessToken();
+        if (!token) {
+          toast.error('Please log in to search parcels');
+          return;
+        }
+        const response = await axios.get(`http://127.0.0.1:8080/api/parcels/geojson/?search=${encodeURIComponent(parcelRef)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const geojson = response.data;
+        if (!geojson.features || geojson.features.length === 0) {
+          toast.error(`Parcel "${parcelRef}" not found`);
+          return;
+        }
+        feature = geojson.features.find((f: any) =>
+          f.properties.parcel_ref === parcelRef ||
+          f.properties.owner_username?.toLowerCase().includes(parcelRef.toLowerCase())
+        ) || geojson.features[0];
+      }
+      if (feature) {
+        // Set selected parcel for zooming
+        setSelectedParcel(feature);
+
+        // Add to highlighted parcels for persistent highlighting
+        const parcelRefToHighlight = feature.properties.parcel_ref;
+        if (!highlightedParcels.includes(parcelRefToHighlight)) {
+          setHighlightedParcels([...highlightedParcels, parcelRefToHighlight]);
+        }
+
+        toast.success(`Parcel ${feature.properties.parcel_ref} - Owner: ${feature.properties.owner_username || 'Unknown'}`, {
+          duration: 3000,
+        });
+      } else {
+        toast.error('Could not determine parcel location');
+      }
+    } catch (error) {
+      console.error('Error locating parcel:', error);
+      toast.error('Failed to locate parcel');
+    }
   };
 
   return (
@@ -127,6 +204,10 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         setSelectedParcel,
         parcelFilters,
         setParcelFilters,
+        locateParcel,
+        highlightedParcels,
+        setHighlightedParcels,
+        clearHighlights,
       }}
     >
       {children}

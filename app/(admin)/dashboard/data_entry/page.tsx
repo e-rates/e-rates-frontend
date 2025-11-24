@@ -25,7 +25,6 @@ import {
   stripDuplicates,
   DuplicateCheckResult,
 } from '@/lib/ml/duplicateDetection';
-import shp from 'shpjs';
 import { BackendGeoJSONFeature } from '@/lib/db/normalize';
 import { EPSGSelector } from './EPSGSelector';
 import { Button } from '@/app/components/ui/button';
@@ -97,13 +96,16 @@ const DataEntry = () => {
     }
 
     try {
-      // Step 1: Parse shapefile locally
+      // Step 1: Parse shapefile locally (dynamic import for performance)
       const checkingToast = toast.loading('Checking for duplicates...');
       const zipBuffer = await files[0].arrayBuffer();
+
+      // Dynamically import shpjs only when needed
+      const shp = (await import('shpjs')).default;
       const geojson = (await shp(zipBuffer)) as any;
       const features = geojson.features as BackendGeoJSONFeature[];
 
-      // Step 2: Check for duplicates using TensorFlow
+      // Step 2: Check for duplicates
       const duplicateResult = await checkForDuplicates(features);
       toast.dismiss(checkingToast);
 
@@ -142,8 +144,7 @@ const DataEntry = () => {
 
       const formData = new FormData();
       formData.append('zip_file', file);
-      formData.append('county', county);
-      formData.append('sub_county', subCounty);
+      formData.append('area_name', subCounty); // Django might expect 'area_name' instead of 'sub_county'
       if (ward) formData.append('ward', ward);
       formData.append('ref_field', refField);
       formData.append('status', 'active');
@@ -155,6 +156,15 @@ const DataEntry = () => {
       } else {
         console.log('⚠️ No source_epsg provided');
       }
+
+      // Log what we're sending for debugging
+      console.log('📤 Uploading with params:', {
+        area_name: subCounty,
+        ward: ward,
+        ref_field: refField,
+        status: 'active',
+        clear_existing: String(clearExisting),
+      });
 
       const loadingToast = toast.loading('Uploading shapefile...');
 
@@ -426,7 +436,7 @@ const DataEntry = () => {
   };
 
   const handleAssignOwners = () => {
-    router.push('/admin/dashboard/parcels-map');
+    router.push('/dashboard/parcels-map?tab=allocate');
   };
 
   const handleStripDuplicates = async () => {

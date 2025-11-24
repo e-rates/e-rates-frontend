@@ -4,13 +4,23 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
   // @ts-ignore - allowedDevOrigins is available in Next.js 16 but not in types yet
-  allowedDevOrigins: ['192.168.0.104:3000'],
+  allowedDevOrigins: ['172.29.114.0:3000'],
 
-  // Force trailing slashes everywhere to match Django's expectations
-  trailingSlash: true,
+  // Match Django's APPEND_SLASH = False setting
+  trailingSlash: false,
 
-  // Turbopack configuration for Next.js 16 - empty object to silence warning
-  turbopack: {},
+  // Optimize compilation speed
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'leaflet', 'react-leaflet', '@radix-ui/react-select', '@radix-ui/react-dropdown-menu'],
+  },
+
+  // Turbopack configuration for Next.js 16
+  turbopack: {
+    resolveAlias: {
+      // Optimize large dependencies
+      canvas: './empty-module.js',
+    },
+  },
 
   async headers() {
     return [
@@ -38,8 +48,12 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
-      // Don't rewrite /api/parcels/* - we handle it with Next.js API routes
-      // Only rewrite other /api/* paths to Django
+      // Proxy all /api/* paths to Django except those handled by Next.js
+      // Next.js API routes take precedence over rewrites
+      {
+        source: '/api/token/:path*',
+        destination: 'http://127.0.0.1:8080/api/token/:path*',
+      },
       {
         source: '/api/users/:path*',
         destination: 'http://127.0.0.1:8000/api/users/:path*',
