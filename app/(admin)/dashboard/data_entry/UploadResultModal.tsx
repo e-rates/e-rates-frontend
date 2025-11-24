@@ -15,8 +15,17 @@ export interface UploadResult {
     layer_name: string;
     feature_count: number;
     geometry_type: string;
-    srid: number;
+    srid: number | null;
+    coordinate_system_type: string;
     fields: string[];
+    extent?: number[];
+    epsg_suggestions?: Array<{
+      epsg: number | null;
+      name: string;
+      confidence: string;
+      reason: string;
+    }>;
+    needs_manual_epsg?: boolean;
   };
 }
 

@@ -136,6 +136,11 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useMapContext = () => {
   const context = useContext(MapContext);
+  return context;
+};
+
+export const useMapContextSafe = () => {
+  const context = useContext(MapContext);
   if (!context) {
     throw new Error('useMapContext must be used within MapProvider');
   }

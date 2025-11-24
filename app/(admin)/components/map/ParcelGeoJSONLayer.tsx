@@ -33,13 +33,28 @@ function createPopupContent(properties: any): string {
   const paidYears = properties.paid_years || [];
   const latestPaymentYear = properties.latest_payment_year;
 
-  // Calculate area in acres
+  // Calculate area in acres - support multiple field names
+  const areaM2 = properties.area_m2 || properties.area || 0;
   const areaAcres =
     properties.area_acres ||
-    (properties.area_m2 ? (properties.area_m2 / 4046.86).toFixed(2) : '0.00');
+    (areaM2 ? (areaM2 / 4046.86).toFixed(2) : '0.00');
 
-  // Get custom properties
-  const customProps = properties.custom_props || properties.props || {};
+  // Get custom properties - support multiple structures
+  const customProps = properties.custom_props || properties.props || properties || {};
+  
+  // Get parcel reference from multiple possible sources
+  const parcelRef = properties.parcel_ref || 
+                   properties.parcel_number || 
+                   customProps.Parcel_No || 
+                   customProps.PARCEL_NO ||
+                   'Unknown';
+  
+  // Get owner from multiple possible sources
+  const owner = properties.owner_username || 
+               properties.owner_user || 
+               properties.owner_name ||
+               customProps.OWNER ||
+               'admin';
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; min-width: 100px; max-width: 200px;">
@@ -50,23 +65,24 @@ function createPopupContent(properties: any): string {
       
       <!-- Parcel Reference -->
       <div style="margin-bottom: 8px;">
-        <div style="font-size: 17px; font-weight: 600; color: #000; margin-bottom: 2px;">${properties.parcel_ref || 'Unknown'}</div>
-        <div style="font-size: 12px; color: #8E8E93;">${customProps.area_name || customProps.AREA_NAME || 'No area name'}</div>
+        <div style="font-size: 17px; font-weight: 600; color: #000; margin-bottom: 2px;">${parcelRef}</div>
+        <div style="font-size: 12px; color: #8E8E93;">${customProps.area_name || customProps.AREA_NAME || customProps.zone || 'No area name'}</div>
       </div>
       
       <!-- Details Grid -->
       <div style="font-size: 13px;">
         <div style="display: flex; justify-content: space-between; padding: 4px 0;">
           <span style="color: #8E8E93;">Owner</span>
-          <span style="color: #000; font-weight: 500;">${properties.owner_username || 'admin'}</span>
+          <span style="color: #000; font-weight: 500;">${owner}</span>
         </div>
         
         <div style="display: flex; justify-content: space-between; padding: 4px 0;">
           <span style="color: #8E8E93;">Plot No</span>
-          <span style="color: #000; font-weight: 500;">${customProps.Parcel_No || customProps.PARCEL_NO || 'N/A'}</span>
+          <span style="color: #000; font-weight: 500;">${customProps.Parcel_No || customProps.PARCEL_NO || customProps.parcel_no || parcelRef}</span>
         </div>
         
-        <!-- Payment Status -->
+        <!-- Payment Status (only show if payment data exists) -->
+        ${properties.payment_status || properties.is_paid_current_year !== undefined ? `
         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E5E5EA;">
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;">
             <span style="color: #8E8E93;">Payment Status</span>
@@ -97,12 +113,13 @@ function createPopupContent(properties: any): string {
               : ''
           }
         </div>
+        ` : ''}
         
         <!-- Area -->
         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E5E5EA;">
           <div style="display: flex; justify-content: space-between; padding: 2px 0;">
             <span style="color: #8E8E93;">Area (m²)</span>
-            <span style="color: #000; font-weight: 600;">${(properties.area_m2 || 0).toLocaleString()}</span>
+            <span style="color: #000; font-weight: 600;">${areaM2.toLocaleString()}</span>
           </div>
           <div style="display: flex; justify-content: space-between; padding: 2px 0;">
             <span style="color: #8E8E93;">Area (acres)</span>
@@ -129,7 +146,7 @@ export function ParcelGeoJSONLayer() {
   const map = useMap();
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const loadingRef = useRef(false);
-  const { showGrid, selectedParcel, setSelectedParcel } = useMapContext();
+  const { showGrid, selectedParcel, setSelectedParcel, parcelFilters } = useMapContext();
   const pathname = usePathname();
 
   // Check if we're on home or parcels-map routes
@@ -152,17 +169,41 @@ export function ParcelGeoJSONLayer() {
           map.removeLayer(geoJsonLayerRef.current);
         }
 
-        // Fetch all parcels
-        const parcelData = await parcelService.getAllParcels();
+        // Fetch parcels with filters applied
+        const parcelData = await parcelService.getAllParcels(parcelFilters);
 
         console.log('📦 Parcel data received:', {
           type: parcelData?.type,
           featureCount: parcelData?.features?.length,
           firstFeature: parcelData?.features?.[0],
+          firstFeatureProps: parcelData?.features?.[0]?.properties,
+          firstGeometry: parcelData?.features?.[0]?.geometry,
+          firstGeometryType: parcelData?.features?.[0]?.geometry?.type,
           crs: parcelData?.crs,
           firstCoordinate:
             parcelData?.features?.[0]?.geometry?.coordinates?.[0]?.[0]?.[0],
+          sampleCoordinates: parcelData?.features?.[0]?.geometry?.coordinates?.[0]?.slice(0, 3),
         });
+
+        // Validate coordinate ranges for first parcel
+        if (parcelData?.features?.length > 0) {
+          const firstCoords = parcelData.features[0].geometry?.coordinates;
+          if (firstCoords && firstCoords[0]) {
+            const samplePoint = firstCoords[0][0];
+            console.log('🔍 Coordinate validation:', {
+              samplePoint,
+              looksLikeLatLng: samplePoint && 
+                             Math.abs(samplePoint[0]) <= 180 && 
+                             Math.abs(samplePoint[1]) <= 90,
+              looksLikeWebMercator: samplePoint && 
+                                   (Math.abs(samplePoint[0]) > 180 || 
+                                    Math.abs(samplePoint[1]) > 90),
+              coordinateOrder: samplePoint ? 
+                             `[${samplePoint[0].toFixed(2)}, ${samplePoint[1].toFixed(2)}]` : 
+                             'N/A'
+            });
+          }
+        }
 
         if (!parcelData?.features?.length) {
           toast.error('No parcels found', { id: loadingToast });
@@ -170,10 +211,41 @@ export function ParcelGeoJSONLayer() {
           return;
         }
 
+        // Auto-select first parcel if search filter is active
+        if (parcelFilters.search && parcelData.features.length > 0) {
+          const firstFeature = parcelData.features[0];
+          const props = firstFeature.properties || {};
+          setSelectedParcel({
+            id: firstFeature.id,
+            parcel_ref: props.parcel_ref || props.parcel_number || 'Unknown',
+            owner_username: props.owner_username || props.owner_user || props.owner_name || 'Unknown',
+            owner_id: props.owner_id || props.owner_user || '',
+            area_m2: props.area_m2 || props.area || 0,
+            area_acres: props.area_acres || (props.area_m2 ? props.area_m2 / 4046.86 : 0),
+            status: props.status || 'active',
+            centroid: props.centroid || null,
+            is_paid_current_year: props.is_paid_current_year || false,
+            payment_status: props.payment_status || 'unpaid',
+            paid_years: props.paid_years || [],
+            latest_payment_year: props.latest_payment_year || null,
+            custom_props: props.custom_props || props.props || props,
+          });
+
+          // Zoom to the selected parcel
+          if (firstFeature.geometry) {
+            const bounds = L.geoJSON(firstFeature).getBounds();
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          }
+        }
+
         // Create GeoJSON layer
         geoJsonLayerRef.current = L.geoJSON(parcelData, {
+          coordsToLatLng: (coords) => {
+            // Handle coordinate conversion - ensure [lng, lat] -> [lat, lng]
+            return L.latLng(coords[1], coords[0]);
+          },
           style: (feature) => {
-            const status = feature?.properties?.status?.toLowerCase();
+            const status = feature?.properties?.status?.toLowerCase() || 'active';
             const paymentStatus = feature?.properties?.payment_status;
             const isPaidCurrentYear = feature?.properties?.is_paid_current_year;
 
@@ -190,8 +262,12 @@ export function ParcelGeoJSONLayer() {
               color = '#34C759'; // Green for paid current year
             } else if (paymentStatus === 'partial') {
               color = '#FF9500'; // Orange for partial payment
-            } else if (paymentStatus === 'unpaid' || !isPaidCurrentYear) {
+            } else if (paymentStatus === 'unpaid' || isPaidCurrentYear === false) {
               color = '#FF3B30'; // Red for unpaid
+            }
+            // Default: Show all parcels in blue if no payment data
+            else if (paymentStatus === undefined && isPaidCurrentYear === undefined) {
+              color = '#007AFF'; // Blue for parcels without payment data
             }
 
             return {
@@ -203,41 +279,36 @@ export function ParcelGeoJSONLayer() {
             };
           },
           onEachFeature: (feature, layer) => {
-            // Handle click based on inspector mode
+            // Handle click - always show details card (inspector logic)
             layer.on('click', (e) => {
-              if (showGrid && isOnSupportedRoute) {
-                // In inspector mode, show details card
-                L.DomEvent.stopPropagation(e);
-                setSelectedParcel({
-                  id: feature.id,
-                  parcel_ref: feature.properties.parcel_ref,
-                  owner_username: feature.properties.owner_username,
-                  owner_id: feature.properties.owner_id,
-                  area_m2: feature.properties.area_m2,
-                  area_acres: feature.properties.area_acres,
-                  status: feature.properties.status,
-                  centroid: feature.properties.centroid,
-                  is_paid_current_year: feature.properties.is_paid_current_year,
-                  payment_status: feature.properties.payment_status,
-                  paid_years: feature.properties.paid_years,
-                  latest_payment_year: feature.properties.latest_payment_year,
-                  custom_props: feature.properties.custom_props,
-                });
-              }
+              L.DomEvent.stopPropagation(e);
+              const props = feature.properties || {};
+              setSelectedParcel({
+                id: feature.id,
+                parcel_ref: props.parcel_ref || props.parcel_number || 'Unknown',
+                owner_username: props.owner_username || props.owner_user || props.owner_name || 'Unknown',
+                owner_id: props.owner_id || props.owner_user || '',
+                area_m2: props.area_m2 || props.area || 0,
+                area_acres: props.area_acres || (props.area_m2 ? props.area_m2 / 4046.86 : 0),
+                status: props.status || 'active',
+                centroid: props.centroid || null,
+                is_paid_current_year: props.is_paid_current_year || false,
+                payment_status: props.payment_status || 'unpaid',
+                paid_years: props.paid_years || [],
+                latest_payment_year: props.latest_payment_year || null,
+                custom_props: props.custom_props || props.props || props,
+              });
             });
 
-            // Add popup (shown when not in inspector mode)
-            const popupContent = createPopupContent(feature.properties);
-            layer.bindPopup(popupContent, {
-              maxWidth: 260,
-              minWidth: 220,
-              className: 'parcel-popup-clean',
-              closeButton: true,
-              autoPan: true,
-            });
+            // Don't add popup - always use inspector card instead
 
             // Add tooltip with parcel reference
-            layer.bindTooltip(feature.properties.parcel_ref || 'Unknown', {
+            const parcelRef = feature.properties.parcel_ref || 
+                             feature.properties.parcel_number || 
+                             feature.properties.props?.Parcel_No || 
+                             feature.properties.props?.PARCEL_NO ||
+                             'Unknown';
+            layer.bindTooltip(parcelRef, {
               permanent: false,
               sticky: true,
             });
@@ -268,9 +339,24 @@ export function ParcelGeoJSONLayer() {
         // Fit map to parcels
         const bounds = geoJsonLayerRef.current.getBounds();
         console.log('🗺️ Parcel bounds:', bounds);
+        console.log('🗺️ Bounds details:', {
+          isValid: bounds.isValid(),
+          southWest: bounds.getSouthWest(),
+          northEast: bounds.getNorthEast(),
+          center: bounds.getCenter(),
+        });
+        
         if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50] });
-          console.log('📍 Map fitted to parcel bounds');
+          try {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+            console.log('📍 Map fitted to parcel bounds');
+          } catch (fitError) {
+            console.error('❌ Error fitting bounds:', fitError);
+            toast.error('Parcels loaded but map positioning failed');
+          }
+        } else {
+          console.warn('⚠️ Invalid bounds - parcels may be outside visible area or have invalid coordinates');
+          toast.error('Parcels loaded with invalid coordinates');
         }
 
         // Wait for rendering to complete
@@ -295,7 +381,7 @@ export function ParcelGeoJSONLayer() {
         map.removeLayer(geoJsonLayerRef.current);
       }
     };
-  }, [map, showGrid, isOnSupportedRoute]);
+  }, [map, showGrid, isOnSupportedRoute, parcelFilters]);
 
   return null;
 }

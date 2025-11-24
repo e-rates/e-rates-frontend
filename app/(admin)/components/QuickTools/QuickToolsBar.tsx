@@ -28,7 +28,8 @@ const QuickToolsBar = () => {
   const [clickedIndex, setClickedIndex] = useState<number | null>(null);
   const [items, setItems] = useState(QuickToolsItems);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { zoomIn, zoomOut, resetZoom } = useMapContext();
+  const [searchValue, setSearchValue] = useState('');
+  const { zoomIn, zoomOut, resetZoom, setParcelFilters, parcelFilters } = useMapContext();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -124,7 +125,19 @@ const QuickToolsBar = () => {
         />
         <input
           type="text"
-          placeholder="search anything ..."
+          placeholder="Search parcel number or owner... (Press Enter)"
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (searchValue.trim()) {
+                setParcelFilters({ search: searchValue.trim() });
+              } else {
+                setParcelFilters({});
+              }
+            }
+          }}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
           className="squircle-full dark:border-border-default dark:bg-elevated-surface h-[35px] w-full border border-gray-200 bg-white pr-4 pl-10 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-gray-400 dark:placeholder:text-gray-500 dark:focus:border-gray-600"

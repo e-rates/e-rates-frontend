@@ -27,6 +27,10 @@ import {
 } from '@/lib/ml/duplicateDetection';
 import shp from 'shpjs';
 import { BackendGeoJSONFeature } from '@/lib/db/normalize';
+import { EPSGSelector } from './EPSGSelector';
+import { Button } from '@/app/components/ui/button';
+
+type ShapefileInfo = NonNullable<UploadResult['shapefile_info']>;
 
 const DataEntry = () => {
   const router = useRouter();
@@ -53,6 +57,16 @@ const DataEntry = () => {
     BackendGeoJSONFeature[] | null
   >(null);
 
+  const [sourceEpsg, setSourceEpsg] = useState<number | undefined>(undefined);
+  const [shapefileInfo, setShapefileInfo] = useState<ShapefileInfo | null>(null);
+  const [epsgSuggestions, setEpsgSuggestions] = useState<Array<{
+    epsg: number | null;
+    name: string;
+    confidence: string;
+    reason: string;
+  }>>([]);
+  const [needsEpsg, setNeedsEpsg] = useState(false);
+
   const handleFilesChange = (newFiles: File[]) => {
     setFiles(newFiles);
     setUploadResult(null);
@@ -73,6 +87,13 @@ const DataEntry = () => {
     if (!subCounty) {
       toast.error('Please select a sub-county');
       return;
+    }
+
+    // Clear previous EPSG error state when retrying with selected EPSG
+    if (sourceEpsg && needsEpsg) {
+      setNeedsEpsg(false);
+      setUploadResult(null);
+      setShowResult(false);
     }
 
     try {
@@ -127,6 +148,13 @@ const DataEntry = () => {
       formData.append('ref_field', refField);
       formData.append('status', 'active');
       formData.append('clear_existing', String(clearExisting));
+      formData.append('auto_generate_ref', 'true'); // Enable auto-generation
+      if (sourceEpsg) {
+        formData.append('source_epsg', String(sourceEpsg)); // Add EPSG
+        console.log('🔍 Uploading with source_epsg:', sourceEpsg);
+      } else {
+        console.log('⚠️ No source_epsg provided');
+      }
 
       const loadingToast = toast.loading('Uploading shapefile...');
 
@@ -151,7 +179,11 @@ const DataEntry = () => {
           } else {
             try {
               const errorData = JSON.parse(xhr.responseText);
-              reject(new Error(errorData.message || 'Upload failed'));
+              console.error('❌ Backend error response:', errorData);
+              // Create error with full response as JSON string for parsing later
+              const error = new Error(errorData.message || 'Upload failed');
+              (error as any).fullResponse = errorData;
+              reject(error);
             } catch (error) {
               reject(new Error(`HTTP error! status: ${xhr.status}`));
             }
@@ -184,14 +216,192 @@ const DataEntry = () => {
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(error.message || 'Failed to upload shapefile');
-      setUploadResult({
+      console.log('sourceEpsg at error time:', sourceEpsg);
+      
+      // Try to parse error response for EPSG suggestions
+      let errorResult: UploadResult | null = null;
+      
+      // First check if error has fullResponse property from backend
+      if (error.fullResponse) {
+        errorResult = error.fullResponse;
+        console.log('📦 Using fullResponse:', errorResult);
+      } else {
+        // Fallback: try to parse from error message
+        try {
+          if (error.message && error.message.includes('{')) {
+            const jsonMatch = error.message.match(/\{.*\}/);
+            if (jsonMatch) {
+              errorResult = JSON.parse(jsonMatch[0]);
+            }
+          }
+        } catch (e) {
+          // Couldn't parse error as JSON
+        }
+      }
+      
+      // Detect coordinate system errors and extract extent if available
+      const errorMsg = error.message || '';
+      const isCoordSystemError = 
+        errorMsg.includes('coordinate system') || 
+        errorMsg.includes('.prj file') ||
+        errorMsg.includes('EPSG') ||
+        errorMsg.includes('out of valid WGS84 range');
+      
+      // Extract extent from error message if available
+      let detectedExtent: number[] | undefined;
+      const extentMatch = errorMsg.match(/extent:\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)/);
+      if (extentMatch) {
+        detectedExtent = [
+          parseFloat(extentMatch[1]),
+          parseFloat(extentMatch[2]),
+          parseFloat(extentMatch[3]),
+          parseFloat(extentMatch[4])
+        ];
+      }
+      
+      // Only show EPSG suggestions if user hasn't already provided an EPSG
+      const shouldShowEpsgSuggestions = !sourceEpsg && isCoordSystemError;
+      
+      // Check if error contains EPSG suggestions from backend
+      if (shouldShowEpsgSuggestions && errorResult?.shapefile_info?.epsg_suggestions) {
+        setShapefileInfo(errorResult.shapefile_info);
+        setEpsgSuggestions(errorResult.shapefile_info.epsg_suggestions);
+        setNeedsEpsg(true);
+        
+        // Auto-select first high-confidence suggestion
+        const bestSuggestion = errorResult.shapefile_info.epsg_suggestions.find(
+          (s) => s.confidence === 'high'
+        );
+        if (bestSuggestion?.epsg) {
+          setSourceEpsg(bestSuggestion.epsg);
+          toast.error(
+            `Missing projection detected. Auto-selected EPSG:${bestSuggestion.epsg}. Review and click Upload again.`,
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(
+            'Coordinate system missing. Please select EPSG code below and upload again.',
+            { duration: 6000 }
+          );
+        }
+        
+        // Don't show error modal for EPSG issues - let user see the selector
+        return;
+      } 
+      // If no backend suggestions but coordinate system error, create frontend suggestions
+      else if (shouldShowEpsgSuggestions && detectedExtent) {
+        const [xmin, ymin, xmax, ymax] = detectedExtent;
+        
+        // Generate suggestions based on extent (Kenya-specific)
+        const suggestions = [];
+        
+        // Check for Kenya UTM Zone 37S (most common)
+        if (xmin >= 100000 && xmax <= 900000 && ymin >= 9800000 && ymax <= 10500000) {
+          suggestions.push({
+            epsg: 21037,
+            name: 'Arc 1960 / UTM zone 37S (Kenya)',
+            confidence: 'high',
+            reason: 'Coordinates match Kenya Arc 1960 UTM 37S range'
+          });
+          suggestions.push({
+            epsg: 32737,
+            name: 'WGS 84 / UTM zone 37S',
+            confidence: 'medium',
+            reason: 'Alternative UTM zone 37S projection'
+          });
+        }
+        // Check for Kenya UTM Zone 36S
+        else if (xmin >= 100000 && xmax <= 900000 && ymin >= 9000000 && ymax <= 10500000) {
+          suggestions.push({
+            epsg: 21036,
+            name: 'Arc 1960 / UTM zone 36S (Kenya)',
+            confidence: 'high',
+            reason: 'Coordinates match Kenya Arc 1960 UTM 36S range (Western Kenya)'
+          });
+          suggestions.push({
+            epsg: 32736,
+            name: 'WGS 84 / UTM zone 36S',
+            confidence: 'medium',
+            reason: 'Alternative UTM zone 36S projection'
+          });
+        }
+        // General projected coordinates
+        else if (xmin >= 100000 && ymin >= 1000000) {
+          suggestions.push({
+            epsg: 21037,
+            name: 'Arc 1960 / UTM zone 37S (Try this first)',
+            confidence: 'medium',
+            reason: 'Most common for Kenya shapefiles'
+          });
+          suggestions.push({
+            epsg: 21036,
+            name: 'Arc 1960 / UTM zone 36S',
+            confidence: 'medium',
+            reason: 'Common for Western Kenya'
+          });
+        }
+        
+        if (suggestions.length > 0) {
+          setEpsgSuggestions(suggestions);
+          setNeedsEpsg(true);
+          setShapefileInfo({
+            layer_name: '',
+            feature_count: 0,
+            geometry_type: '',
+            srid: null,
+            coordinate_system_type: '',
+            fields: [],
+            extent: detectedExtent,
+            needs_manual_epsg: true
+          });
+          
+          // Auto-select the first high-confidence suggestion
+          const bestSuggestion = suggestions.find((s) => s.confidence === 'high');
+          if (bestSuggestion?.epsg) {
+            setSourceEpsg(bestSuggestion.epsg);
+            toast.error(
+              `Missing .prj file detected. Auto-selected EPSG:${bestSuggestion.epsg}. Review and click Upload again.`,
+              { duration: 8000 }
+            );
+          } else {
+            toast.error(
+              'Coordinate system missing. Please select EPSG code below and upload again.',
+              { duration: 6000 }
+            );
+          }
+          
+          // Don't show error modal for EPSG issues - let user see the selector
+          return;
+        } else {
+          setNeedsEpsg(true);
+          toast.error(
+            'Coordinate system not found. Please manually enter the EPSG code (e.g., 21037) below.',
+            { duration: 8000 }
+          );
+          // Don't show error modal for EPSG issues
+          return;
+        }
+      } else {
+        toast.error(error.message || 'Failed to upload shapefile');
+      }
+      
+      setUploadResult(errorResult || {
         success: false,
         message: error.message || 'Upload failed',
         imported_count: 0,
         skipped_count: 0,
         error_count: 1,
         errors: [error.message || 'Unknown error occurred'],
+        shapefile_info: detectedExtent ? {
+          layer_name: '',
+          feature_count: 0,
+          geometry_type: '',
+          srid: null,
+          coordinate_system_type: '',
+          fields: [],
+          extent: detectedExtent,
+          needs_manual_epsg: true
+        } : undefined
       });
       setShowResult(true);
     } finally {
@@ -208,6 +418,11 @@ const DataEntry = () => {
     setWard('');
     setRefField('PARCEL_ID');
     setClearExisting(false);
+    // Reset EPSG state
+    setSourceEpsg(undefined);
+    setShapefileInfo(null);
+    setEpsgSuggestions([]);
+    setNeedsEpsg(false);
   };
 
   const handleAssignOwners = () => {
@@ -249,7 +464,7 @@ const DataEntry = () => {
   const handleCancelUpload = () => {
     setDuplicateCheckResult(null);
     setProcessedFeatures(null);
-    toast.info('Upload cancelled');
+    toast.error('Upload cancelled');
   };
 
   return (
@@ -311,6 +526,62 @@ const DataEntry = () => {
                     onInvalidFile={handleInvalidFile}
                     disabled={isUploading}
                   />
+
+                  {/* EPSG Selector - Always visible */}
+                  <EPSGSelector
+                    sourceEpsg={sourceEpsg}
+                    onSourceEpsgChange={setSourceEpsg}
+                    suggestions={epsgSuggestions}
+                    disabled={isUploading}
+                    needsEpsg={needsEpsg}
+                  />
+
+                  {/* Retry Upload Button - Shows when EPSG is auto-selected */}
+                  {needsEpsg && sourceEpsg && files.length > 0 && (
+                    <div className="w-full max-w-3xl">
+                      <Button
+                        onClick={handleUpload}
+                        disabled={isUploading || !subCounty}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-lg"
+                      >
+                        {isUploading ? 'Uploading...' : `Upload with EPSG:${sourceEpsg}`}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Shapefile Info Display */}
+                  {shapefileInfo && (
+                    <div className="w-full max-w-3xl rounded-lg border border-border bg-card p-4">
+                      <h4 className="font-medium mb-2">📊 Shapefile Information</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>Features:</div>
+                        <div className="font-mono">{shapefileInfo.feature_count}</div>
+                        
+                        <div>Geometry:</div>
+                        <div className="font-mono">{shapefileInfo.geometry_type}</div>
+                        
+                        <div>Coordinate System:</div>
+                        <div className="font-mono">
+                          {shapefileInfo.srid ? (
+                            <span className="text-green-600">EPSG:{shapefileInfo.srid}</span>
+                          ) : (
+                            <span className="text-yellow-600">⚠️ Not defined</span>
+                          )}
+                        </div>
+                        
+                        <div>Status:</div>
+                        <div>
+                          {shapefileInfo.srid === 4326 ? (
+                            <span className="text-green-600">✅ WGS84 - Ready</span>
+                          ) : shapefileInfo.needs_manual_epsg ? (
+                            <span className="text-yellow-600">⚠️ Needs EPSG</span>
+                          ) : (
+                            <span className="text-blue-600">🔄 Will reproject</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <AdvancedOptions
                     isOpen={showAdvanced}

@@ -8,7 +8,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    const response = await fetch('http://127.0.0.1:8080/api/token/verify', {
+    const response = await fetch('http://127.0.0.1:8000/api/token/verify/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

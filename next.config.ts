@@ -42,11 +42,11 @@ const nextConfig: NextConfig = {
       // Only rewrite other /api/* paths to Django
       {
         source: '/api/users/:path*',
-        destination: 'http://127.0.0.1:8080/api/users/:path*',
+        destination: 'http://127.0.0.1:8000/api/users/:path*',
       },
       {
         source: '/api/admin/:path*',
-        destination: 'http://127.0.0.1:8080/api/admin/:path*',
+        destination: 'http://127.0.0.1:8000/api/admin/:path*',
       },
     ];
   },

@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { LogOut, Crown, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { userService } from '@/lib/auth';
+import { ParcelSearch } from './ParcelSearch';
+import { usePathname } from 'next/navigation';
 
 interface AdminProfile {
   user_id?: string;
@@ -20,6 +22,7 @@ interface AdminProfile {
 const Header = () => {
   const { logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
 
   useEffect(() => {
@@ -47,6 +50,9 @@ const Header = () => {
   const handleProfileClick = () => {
     router.push('/dashboard/account');
   };
+
+  // Show search bar on home and parcels-map pages
+  const showSearch = pathname?.includes('/home') || pathname?.includes('/parcels-map');
 
   return (
     <header
@@ -92,6 +98,14 @@ const Header = () => {
           <RealTimeClock className="text-regular-sm font-bold dark:font-normal" />
         </div>
       </div>
+
+      {/* Parcel Search - Show on home and parcels-map pages */}
+      {showSearch && (
+        <div className="flex-1 mx-8">
+          <ParcelSearch />
+        </div>
+      )}
+
       {/* Controls */}
       <nav
         role="navigation"
