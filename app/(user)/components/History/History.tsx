@@ -7,7 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { columns, type HistoryRecord } from './historyTypes';
-import { getAuthToken } from '@/lib/api';
+import { authService } from '@/lib/auth';
 
 const History = () => {
   const [data, setData] = useState<HistoryRecord[]>([]);
@@ -17,23 +17,36 @@ const History = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const token = getAuthToken();
+        const token = await authService.getValidAccessToken();
+        
+        if (!token) {
+          // No token, just show empty history without error
+          setIsLoading(false);
+          return;
+        }
+        
         const response = await fetch('/api/user/history', {
           headers: {
-            ...(token && { Authorization: `Bearer ${token}` }),
+            Authorization: `Bearer ${token}`,
           },
         });
 
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to fetch history');
+          // Don't show error for not implemented yet
+          if (result.error === 'Backend API not yet implemented') {
+            setData([]);
+          } else {
+            throw new Error(result.error || 'Failed to fetch history');
+          }
+        } else {
+          setData(result.data || []);
         }
-
-        setData(result.data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load history');
-        console.error('History fetch error:', err);
+        // Silently fail - history is optional
+        console.log('History not available:', err);
+        setData([]);
       } finally {
         setIsLoading(false);
       }

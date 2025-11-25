@@ -20,6 +20,7 @@ type LoginFormData = z.infer<typeof LoginSchema>;
 
 const Login = () => {
   const router = useRouter();
+  const { login } = useUserAuth();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -63,9 +64,17 @@ const Login = () => {
         throw new Error(result.error || 'Login failed');
       }
 
-      if (result.data?.access && result.data?.refresh) {
+      if (result.data?.access && result.data?.refresh && result.data?.user) {
+        // Store in localStorage for API calls
         authService.setTokens(result.data.access, result.data.refresh);
-        window.location.href = '/';
+        
+        // Store in cookies via UserAuthContext
+        login(result.data.user, result.data.access);
+        
+        // Small delay to ensure everything is saved, then navigate
+        setTimeout(() => {
+          router.push('/');
+        }, 100);
       }
     } catch (err) {
       setError(

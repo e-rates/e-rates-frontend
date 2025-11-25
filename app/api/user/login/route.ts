@@ -16,6 +16,11 @@ export interface LoginResponse {
   data?: {
     access: string;
     refresh: string;
+    user: {
+      id: string;
+      phonenumber: string;
+      name?: string;
+    };
   };
   message?: string;
   error?: string;
@@ -49,12 +54,27 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Fetch user data using the access token
+    const userResponse = await axios.get(
+      'http://127.0.0.1:8000/api/users/me/',
+      {
+        headers: {
+          Authorization: `Bearer ${response.data.access}`,
+        },
+      }
+    );
+
     return NextResponse.json(
       {
         success: true,
         data: {
           access: response.data.access,
           refresh: response.data.refresh,
+          user: {
+            id: userResponse.data.id,
+            phonenumber: userResponse.data.phonenumber || phonenumber,
+            name: userResponse.data.name || userResponse.data.username,
+          },
         },
       },
       { status: 200 }

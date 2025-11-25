@@ -16,13 +16,12 @@ import MobileSettings from './components/settings/settings';
 import Account from './components/Account/account';
 import { UserAuthProvider, useUserAuth } from './context/UserAuthContext';
 import { FullPageLoader } from '../components/loading-spinner';
-import { useAuth } from '@/hooks/useAuth';
 
 function UserLayoutContent({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, loading: isLoading } = useUserAuth();
 
   // Debug logging
   console.log('UserLayout:', { pathname, isAuthenticated, isLoading });
