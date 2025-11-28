@@ -1,6 +1,6 @@
 'use client';
 
-import { User2Icon } from 'lucide-react';
+import { User2Icon, CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Notification {
@@ -71,7 +71,7 @@ export function NotificationsComponent({
   return (
     <div className={`border-border-default border-t-[0.5px] pt-2 ${className}`}>
       <div className="px-2">
-        <h1 className="text-medium-md tracking-normal">Notifications</h1>
+        <h1 className="text-medium-md tracking-normal text-text-primary">Notifications</h1>
       </div>
 
       {loading ? (
@@ -85,45 +85,50 @@ export function NotificationsComponent({
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 mt-2">
           {notifications.slice(0, 3).map((notification) => (
             <div
               key={notification.id}
-              className="squircle-xl border-border-default flex h-fit w-full flex-row space-x-2 border-[0.5px] bg-emerald-400/10 px-2 pt-2 pb-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              className="squircle-2xl group relative overflow-hidden border-[0.5px] border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-emerald-400/5 to-transparent backdrop-blur-sm transition-all duration-300 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5"
             >
-              <div className="flex w-full flex-col">
-                {/*  */}
-                <div className="flex w-full flex-row items-center justify-start space-x-2">
-                  {/* <div className="squircle-xl flex h-full w-[50px] flex-col items-center justify-center">
-                    <User2Icon className="h-6 w-6" />
-                  </div> */}
-                  <p className="text-regular-md tracking-tight">
-                    {notification.user}
-                  </p>
-                  {/*  */}
+              {/* Subtle shine effect on hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              
+              <div className="relative p-4 space-y-2">
+                {/* Header with icon */}
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">
+                      {notification.user}
+                    </p>
+                  </div>
+                  {!notification.read && (
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-lg shadow-emerald-400/50"></div>
+                  )}
                 </div>
-                {/*  */}
-                <div className="flex w-full flex-row items-center justify-start space-x-2">
-                  <p className="text-regular-md space-x-2 tracking-tight">
-                    <span>P.NO</span>
-                    <span>{notification.parcel}</span>
-                  </p>
-                  <p className="text-body-md tracking-tight">
+
+                {/* Parcel info */}
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="font-mono font-medium text-emerald-600 dark:text-emerald-300">
+                    PNO {notification.parcel}
+                  </span>
+                  <span className="h-1 w-1 rounded-full bg-gray-400 dark:bg-neutral-600"></span>
+                  <span className="text-gray-600 dark:text-neutral-400">
                     {notification.location}
-                  </p>
+                  </span>
                 </div>
-                {/*  */}
-                <div className="flex h-full flex-col items-start justify-center">
-                  <p className="text-regular-md tracking-tight">
-                    {notification.message}
-                  </p>
-                </div>
+
+                {/* Message */}
+                <p className="text-sm text-gray-700 dark:text-neutral-300 leading-relaxed">
+                  {notification.message}
+                </p>
+
+                {/* Bottom accent line */}
+                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"></div>
               </div>
-              {/* {!notification.read && (
-                <div className="flex h-full items-start justify-center pt-4">
-                  <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                </div>
-              )} */}
             </div>
           ))}
         </div>

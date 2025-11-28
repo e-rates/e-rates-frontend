@@ -187,20 +187,20 @@ export const AllocateParcel = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-background p-6">
+    <div className="h-full w-full overflow-y-auto bg-neutral-800/30 p-6">
       <div className="mx-auto max-w-4xl space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Allocate Parcel to User</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl text-regular-lg">Allocate Parcel to User</h2>
+          <p className="text-muted-foreground text-regular-md">
             Search for a parcel and assign it to a registered user
           </p>
         </div>
 
         {/* Parcel Search */}
-        <div className="space-y-4 rounded-lg border p-6">
+        <div className="space-y-4 squircle-2xl border-[0.5px] border-neutral-600/10 p-6">
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Select Parcel</h3>
+            <h3 className="text-2xl text-regular-lg">Select Parcel</h3>
           </div>
 
           <div className="relative">
@@ -210,14 +210,14 @@ export const AllocateParcel = () => {
             )}
             <input
               type="text"
-              placeholder="Enter parcel number (min 3 characters)..."
+              placeholder="Enter parcel number ..."
               value={parcelSearch}
               onChange={(e) => {
                 setParcelSearch(e.target.value);
                 setSelectedParcel(null);
               }}
               onFocus={() => parcels.length > 0 && setShowParcelDropdown(true)}
-              className="w-full rounded-md border bg-background px-10 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-md border squircle-3xl bg-neutral-800/20 px-10 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
 
             {/* Autocomplete Dropdown */}
@@ -229,7 +229,7 @@ export const AllocateParcel = () => {
                     onClick={() => handleSelectParcel(parcel)}
                     className="cursor-pointer border-b px-4 py-3 hover:bg-accent last:border-b-0"
                   >
-                    <p className="font-semibold">
+                    <p className="font-semi">
                       {parcel.parcel_ref || parcel.parcel_number}
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -243,8 +243,8 @@ export const AllocateParcel = () => {
 
           {/* Search hints */}
           {parcelSearch.length > 0 && parcelSearch.length < 3 && (
-            <p className="text-sm text-muted-foreground">
-              Type at least 3 characters to search...
+            <p className="text-2xl text-regular-lg">
+              Type at least 3 characters to search
             </p>
           )}
           {parcelSearch.length >= 3 && !isSearchingParcels && parcels.length === 0 && (
@@ -263,10 +263,10 @@ export const AllocateParcel = () => {
         </div>
 
         {/* User Search */}
-        <div className="space-y-4 rounded-lg border p-6">
+        <div className="space-y-4 squircle-2xl border-[0.5px] border-neutral-600/10 p-6">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Select User</h3>
+            <User className="h-5 w-5 text-regular-lg" />
+            <h3 className="text-lg font-semi">Select User</h3>
           </div>
 
           <div className="relative">
@@ -283,7 +283,7 @@ export const AllocateParcel = () => {
                 setSelectedUser(null);
               }}
               onFocus={() => users.length > 0 && setShowUserDropdown(true)}
-              className="w-full rounded-md border bg-background px-10 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-md border squircle-3xl bg-neutral-800/20 px-10 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
 
             {/* Autocomplete Dropdown */}
@@ -295,7 +295,7 @@ export const AllocateParcel = () => {
                     onClick={() => handleSelectUser(user)}
                     className="cursor-pointer border-b px-4 py-3 hover:bg-accent last:border-b-0"
                   >
-                    <p className="font-semibold">
+                    <p className="font-semi">
                       {user.username || 'No username'}
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -338,7 +338,7 @@ export const AllocateParcel = () => {
           <button
             onClick={handleAllocate}
             disabled={!selectedParcel || !selectedUser || isAllocating}
-            className="rounded-md bg-primary px-6 py-3 font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-md bg-primary px-6 py-3 font-semi text-white hover:bg-primary/90 disabled:opacity-50"
           >
             {isAllocating ? 'Allocating...' : 'Allocate Parcel'}
           </button>

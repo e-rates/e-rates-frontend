@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { QuickToolsItems, QuickToolItem as QuickToolItemType } from './QuickToolsData';
+import {
+  QuickToolsItems,
+  QuickToolItem as QuickToolItemType,
+} from './QuickToolsData';
 import { useSpring, animated } from '@react-spring/web';
 import { useMapContext } from '../../context/MapContext';
 import axios from 'axios';
@@ -32,9 +35,12 @@ const QuickToolsBar = () => {
   const [items, setItems] = useState(QuickToolsItems);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [searchSuggestions, setSearchSuggestions] = useState<Array<{ parcel_ref: string, owner_username: string }>>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<
+    Array<{ parcel_ref: string; owner_username: string }>
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { zoomIn, zoomOut, resetZoom, locateParcel, clearHighlights } = useMapContext();
+  const { zoomIn, zoomOut, resetZoom, locateParcel, clearHighlights } =
+    useMapContext();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -65,7 +71,8 @@ const QuickToolsBar = () => {
         const { ParcelQueries } = await import('@/lib/db/queries');
         const localParcels = await ParcelQueries.search(searchValue);
 
-        let suggestions: Array<{ parcel_ref: string, owner_username: string }> = [];
+        let suggestions: Array<{ parcel_ref: string; owner_username: string }> =
+          [];
 
         if (!localParcels || localParcels.length === 0) {
           // fallback to backend
@@ -77,10 +84,11 @@ const QuickToolsBar = () => {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
-          suggestions = response.data.features?.map((f: any) => ({
-            parcel_ref: f.properties.parcel_ref,
-            owner_username: f.properties.owner_username || 'No owner',
-          })) || [];
+          suggestions =
+            response.data.features?.map((f: any) => ({
+              parcel_ref: f.properties.parcel_ref,
+              owner_username: f.properties.owner_username || 'No owner',
+            })) || [];
         } else {
           suggestions = localParcels.map((p: any) => ({
             parcel_ref: p.parcel_number,
@@ -156,15 +164,18 @@ const QuickToolsBar = () => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedSuggestionIndex(prev =>
+      setSelectedSuggestionIndex((prev) =>
         prev < searchSuggestions.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedSuggestionIndex(prev => prev > -1 ? prev - 1 : -1);
+      setSelectedSuggestionIndex((prev) => (prev > -1 ? prev - 1 : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < searchSuggestions.length) {
+      if (
+        selectedSuggestionIndex >= 0 &&
+        selectedSuggestionIndex < searchSuggestions.length
+      ) {
         const suggestion = searchSuggestions[selectedSuggestionIndex];
         locateParcel(suggestion.parcel_ref);
         setSearchValue('');
@@ -207,10 +218,11 @@ const QuickToolsBar = () => {
       {/* Search Bar */}
       <div className="relative flex-1">
         <Search
-          className={`absolute top-1/2 left-3 -translate-y-1/2 transition-colors ${searchFocused
-            ? 'text-black dark:text-white'
-            : 'text-gray-400 dark:text-gray-500'
-            }`}
+          className={`absolute top-1/2 left-3 -translate-y-1/2 transition-colors ${
+            searchFocused
+              ? 'text-black dark:text-white'
+              : 'text-gray-400 dark:text-gray-500'
+          }`}
           size={18}
         />
         <input
@@ -226,7 +238,10 @@ const QuickToolsBar = () => {
 
         {/* Suggestions Dropdown */}
         {showSuggestions && searchSuggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800" style={{ zIndex: 100000 }}>
+          <div
+            className="dark:border-border-default dark:bg-panel-bg absolute top-full right-0 left-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+            style={{ zIndex: 100000 }}
+          >
             {searchSuggestions.map((suggestion, idx) => (
               <div
                 key={idx}
@@ -237,10 +252,11 @@ const QuickToolsBar = () => {
                   setSearchValue(suggestion.parcel_ref);
                   setShowSuggestions(false);
                 }}
-                className={`cursor-pointer px-4 py-2 transition-colors ${idx === selectedSuggestionIndex
-                  ? 'bg-gray-100 dark:bg-gray-700'
-                  : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                className={`cursor-pointer px-4 py-2 transition-colors ${
+                  idx === selectedSuggestionIndex
+                    ? 'dark:bg-active-surface bg-gray-100'
+                    : 'dark:hover:bg-hover-surface hover:bg-gray-50'
+                }`}
               >
                 <div className="text-sm font-medium text-gray-900 dark:text-white">
                   Parcel {suggestion.parcel_ref}
@@ -353,10 +369,11 @@ const QuickToolItem = ({
     >
       <animated.div style={springProps} onClick={onClick}>
         <div
-          className={`squircle-md flex h-[35px] w-[35px] cursor-grab items-center justify-center transition-all duration-300 active:cursor-grabbing ${isActive
-            ? 'bg-black text-white dark:bg-white dark:text-black'
-            : 'dark:bg-elevated-surface bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 dark:text-current'
-            }`}
+          className={`squircle-md flex h-[35px] w-[35px] cursor-grab items-center justify-center transition-all duration-300 active:cursor-grabbing ${
+            isActive
+              ? 'bg-black text-white dark:bg-white dark:text-black'
+              : 'dark:bg-elevated-surface bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 dark:text-current'
+          }`}
         >
           <item.icon size={18} />
         </div>

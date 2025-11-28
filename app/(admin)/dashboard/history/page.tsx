@@ -3,58 +3,66 @@
 import React from 'react';
 import { BlurInLoader } from '@/app/components/blur-in-loader';
 import { Clock, Filter } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
+
+const historyLogs = [
+  { id: 1, log: 'User John Doe updated Parcel 1267', time: '2 minutes ago' },
+  { id: 2, log: 'Payment received for Parcel 1214', time: '15 minutes ago' },
+  { id: 3, log: 'New parcel allocation: Parcel 1298', time: '1 hour ago' },
+  { id: 4, log: 'User Sarah Smith logged in', time: '2 hours ago' },
+  { id: 5, log: 'System backup completed successfully', time: '3 hours ago' },
+];
 
 export default function HistoryPage() {
   return (
     <BlurInLoader isLoading={false}>
-      <div className="w-full p-6">
-        <div className="mx-auto max-w-7xl">
+      <div className="h-full w-full overflow-y-auto bg-white dark:bg-neutral-800/30 p-6">
+        <div className="mx-auto max-w-5xl space-y-6">
+          
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-text-primary mb-2 text-3xl font-bold">
-              Activity History
-            </h1>
-            <p className="text-text-secondary text-sm">
-              Audit log of all system activities and changes
-            </p>
+          <div>
+            <h2 className="text-xl text-text-primary font-medium">History Logs</h2>
+            <p className="text-text-tertiary text-sm mt-1">Track system activities and changes</p>
           </div>
 
-          {/* Filter Bar */}
-          <div className="squircle-lg bg-card-bg border-border-default mb-6 flex items-center gap-4 border p-4">
-            <div className="flex flex-1 gap-4">
-              <select className="squircle-lg bg-main-bg border-border-default text-text-primary focus:border-primary border px-4 py-2 text-sm focus:outline-none">
-                <option>All Activities</option>
-                <option>Payments</option>
-                <option>User Actions</option>
-                <option>System Events</option>
-              </select>
-              <input
-                type="date"
-                className="squircle-lg bg-main-bg border-border-default text-text-primary focus:border-primary border px-4 py-2 text-sm focus:outline-none"
-              />
-            </div>
-            <Button variant="outline" className="gap-2">
+          {/* Filter Section (UI only) */}
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 rounded-lg bg-elevated-surface hover:bg-hover-surface border-[0.5px] border-border-default px-4 py-2 text-sm text-text-secondary transition-colors">
               <Filter className="h-4 w-4" />
               Filter
-            </Button>
+            </button>
           </div>
 
-          {/* Timeline */}
-          <div className="squircle-lg bg-card-bg border-border-default border p-6">
-            <div className="space-y-6">
-              {/* Timeline Item Example */}
-              <div className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="bg-primary/20 text-primary rounded-full p-2">
-                    <Clock className="h-4 w-4" />
+          {/* History Table */}
+          <div className="squircle-2xl border-[0.5px] border-border-default bg-elevated-surface overflow-hidden">
+            <div className="w-full text-left">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 border-b-[0.5px] border-dashed border-border-default bg-hover-surface px-6 py-4 text-sm font-medium text-text-tertiary">
+                <div className="col-span-8">History Log</div>
+                <div className="col-span-4 text-right">Time</div>
+              </div>
+
+              {/* Table Body */}
+              <div className="divide-y-[0.5px] divide-dashed divide-border-default">
+                {historyLogs.length > 0 ? (
+                  historyLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="group grid cursor-pointer grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-hover-surface"
+                    >
+                      <div className="col-span-8 flex items-center text-sm text-text-secondary group-hover:text-text-primary">
+                        {log.log}
+                      </div>
+                      <div className="col-span-4 flex items-center justify-end text-sm text-text-tertiary">
+                        {log.time}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-text-tertiary">
+                    <Clock className="mb-2 h-8 w-8 opacity-20" />
+                    <p>No history logs found.</p>
                   </div>
-                  <div className="bg-border-default h-full w-px"></div>
-                </div>
-                <div className="text-text-secondary flex-1 pb-6 text-sm">
-                  No activity history available yet. Actions will appear here as
-                  they occur.
-                </div>
+                )}
               </div>
             </div>
           </div>

@@ -101,7 +101,7 @@ export default function SettingsPage() {
                     <p className="text-text-primary mb-1 text-sm font-medium">
                       Currency
                     </p>
-                    <select className="bg-main-bg border-border-default text-text-primary focus:border-primary w-full rounded-lg border px-4 py-2 text-sm focus:outline-none">
+                    <select className="bg-white dark:bg-neutral-800/30 border-border-default text-text-primary focus:border-primary w-full rounded-lg border px-4 py-2 text-sm focus:outline-none">
                       <option>USD ($)</option>
                       <option>ZWL (Z$)</option>
                       <option>ZAR (R)</option>
@@ -113,7 +113,7 @@ export default function SettingsPage() {
                     <p className="text-text-primary mb-1 text-sm font-medium">
                       Time Zone
                     </p>
-                    <select className="bg-main-bg border-border-default text-text-primary focus:border-primary w-full rounded-lg border px-4 py-2 text-sm focus:outline-none">
+                    <select className="bg-white dark:bg-neutral-800/30 border-border-default text-text-primary focus:border-primary w-full rounded-lg border px-4 py-2 text-sm focus:outline-none">
                       <option>Africa/Harare (GMT+2)</option>
                       <option>UTC</option>
                     </select>
@@ -155,7 +155,7 @@ export default function SettingsPage() {
                       Auto-logout after inactivity
                     </p>
                   </div>
-                  <select className="bg-main-bg border-border-default text-text-primary focus:border-primary rounded-lg border px-4 py-2 text-sm focus:outline-none">
+                  <select className="bg-white dark:bg-neutral-800/30 border-border-default text-text-primary focus:border-primary rounded-lg border px-4 py-2 text-sm focus:outline-none">
                     <option>15 minutes</option>
                     <option>30 minutes</option>
                     <option>1 hour</option>

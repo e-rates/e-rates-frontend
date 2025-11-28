@@ -47,7 +47,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="bg-main-bg mx-auto min-h-screen w-full max-w-[1366px] px-2">
+    <div className="bg-white dark:bg-neutral-800/30 mx-auto min-h-screen w-full max-w-[1366px] px-2">
       <Header />
       <div>{children}</div>
     </div>

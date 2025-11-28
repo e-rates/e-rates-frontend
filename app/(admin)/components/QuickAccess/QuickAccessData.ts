@@ -24,6 +24,7 @@ export interface QuickAccessMenuItem {
   action?: () => void;
   isActive?: boolean;
   requiresContext?: boolean; // Flag for items that need context
+  showExportMenu?: boolean; // Flag for items that show export submenu
 }
 
 export const QuickAccessMenuItems: QuickAccessMenuItem[] = [
@@ -40,7 +41,7 @@ export const QuickAccessMenuItems: QuickAccessMenuItem[] = [
       }
     },
   },
-  { name: 'ExportFile', icon: FileArchive, href: '/' },
+  { name: 'ExportFile', icon: FileArchive, showExportMenu: true }, // Show export menu
   { name: 'Inspector', icon: Eye, requiresContext: true }, // Parcel Inspector Mode
   { name: 'BaseMap', icon: Earth, requiresContext: true }, // BaseMap toggle requires MapContext
   { name: 'LockView', icon: GlobeLock, requiresContext: true }, // LockView toggle requires MapContext

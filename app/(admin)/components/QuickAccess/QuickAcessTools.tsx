@@ -33,6 +33,7 @@ const QuickAcessTools = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [clickedIndex, setClickedIndex] = useState<number | null>(null);
   const [items, setItems] = useState(QuickAccessMenuItems);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const {
     toggleGrid,
     showGrid,
@@ -51,6 +52,14 @@ const QuickAcessTools = () => {
 
   // Check if we're on the home page
   const isOnHomePage = pathname?.includes('/home');
+
+  // Check if we're on exportable routes
+  const isOnReports = pathname?.includes('/dashboard/rate-payments');
+  const isOnDefaulters = pathname?.includes('/dashboard/defaulters');
+  const isOnHistory = pathname?.includes('/dashboard/history');
+  const canExport = isOnReports || isOnDefaulters || isOnHistory;
+
+  console.log('Export Debug:', { pathname, canExport, isOnReports, isOnDefaulters, isOnHistory });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -100,6 +109,12 @@ const QuickAcessTools = () => {
       console.log('🖱️ QuickAccess: Clear Highlights clicked');
       clearHighlights();
       toast.success('Highlights cleared');
+      return;
+    }
+
+    // Handle Export File
+    if (item.name === 'ExportFile' && canExport) {
+      setShowExportMenu(!showExportMenu);
       return;
     }
 
@@ -172,6 +187,8 @@ const QuickAcessTools = () => {
                     item.name === 'BaseMap' && showBaseMap;
                   const isLockViewActive =
                     item.name === 'LockView' && isMapLocked;
+                  const isExportActive =
+                    item.name === 'ExportFile' && showExportMenu;
 
                   return (
                     <QuickAccessItem
@@ -183,10 +200,12 @@ const QuickAcessTools = () => {
                         isInspectorActive ||
                         isBaseMapActive ||
                         isLockViewActive ||
+                        isExportActive ||
                         (activeIndex === index &&
                           item.name !== 'Inspector' &&
                           item.name !== 'BaseMap' &&
-                          item.name !== 'LockView')
+                          item.name !== 'LockView' &&
+                          item.name !== 'ExportFile')
                       }
                       isHovered={hoveredIndex === index}
                       isClicked={clickedIndex === index}
@@ -226,6 +245,23 @@ const QuickAcessTools = () => {
           <ParcelDetailsCard
             parcel={selectedParcel}
             onClose={() => setSelectedParcel(null)}
+          />
+        </div>
+      )}
+
+      {/* Export Menu - Only visible on exportable routes */}
+      {canExport && showExportMenu && mounted && (
+        <div
+          className="mt-2"
+          style={{
+            animation: 'blurIn 0.4s ease-out forwards',
+          }}
+        >
+          <ExportMenu 
+            onExport={(period, type) => {
+              toast.success(`Exporting ${period} ${type}...`);
+              setShowExportMenu(false);
+            }}
           />
         </div>
       )}
@@ -303,7 +339,7 @@ const QuickAccessItem = ({
             ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400 opacity-30 dark:border-gray-700 dark:bg-gray-800'
             : isActive
               ? 'cursor-grab border-[#007AFF] bg-[#007AFF] text-white active:cursor-grabbing'
-              : 'dark:border-border-default dark:bg-elevated-surface cursor-grab border-gray-200 bg-gray-50 text-gray-700 opacity-50 hover:opacity-75 active:cursor-grabbing dark:text-current'
+              : 'dark:border-border-default dark:bg-elevated-surface cursor-grab border-gray-200 bg-gray-50 text-gray-600 opacity-70 hover:opacity-100 hover:text-gray-800 active:cursor-grabbing dark:text-current dark:opacity-50 dark:hover:opacity-75'
             }`}
         >
           <item.icon size={20} />
@@ -322,6 +358,40 @@ const QuickAccessItem = ({
           {item.name}
         </div>
       )}
+    </div>
+  );
+};
+
+interface ExportMenuProps {
+  onExport: (period: string, type: string) => void;
+}
+
+const ExportMenu = ({ onExport }: ExportMenuProps) => {
+  const periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+  const types = ['Data', 'Graph'];
+
+  return (
+    <div className="squircle-2xl dark:bg-panel-bg bg-gray-100 p-3 space-y-3">
+      <div className="px-1">
+        <p className="text-regular-md">Export Options</p>
+      </div>
+      
+      {types.map((type) => (
+        <div key={type} className="space-y-2">
+          <p className="text-body-xs text-neutral-500 px-1">{type}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {periods.map((period) => (
+              <button
+                key={`${type}-${period}`}
+                onClick={() => onExport(period, type)}
+                className="squircle-md dark:bg-elevated-surface dark:border-border-default dark:hover:bg-hover-surface bg-gray-50 border-[0.5px] border-gray-200 px-3 py-2 text-sm transition-colors hover:bg-gray-100"
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

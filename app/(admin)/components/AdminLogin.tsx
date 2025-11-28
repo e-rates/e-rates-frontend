@@ -5,14 +5,15 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Heart, Check, HelpCircle } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { useSpring, animated } from '@react-spring/web';
-import { ThemeToggle } from '../../components/theme-toggle';
+
 
 const AdminLoginSchema = z.object({
   username: z.string().min(3, 'Username is too short'),
   password: z.string().min(3, 'Password is too short'),
+  rememberMe: z.boolean().optional(),
 });
 
 type AdminLoginFormData = z.infer<typeof AdminLoginSchema>;
@@ -43,6 +44,30 @@ const AdminLogin = () => {
       ? 'rgba(59, 130, 246, 1)'
       : 'rgba(209, 213, 219, 0.3)',
     config: { tension: 300, friction: 30 },
+  });
+
+  const { scale } = useSpring({
+    from: { scale: 1 },
+    to: async (next) => {
+      while (true) {
+        await next({ scale: 1.2 });
+        await next({ scale: 1 });
+      }
+    },
+    config: { duration: 800 },
+  });
+
+  const [rememberMe, setRememberMe] = useState(false);
+  const checkboxAnimation = useSpring({
+    backgroundColor: rememberMe ? 'rgba(37, 99, 235, 1)' : 'rgba(255, 255, 255, 1)', // Blue for admin
+    borderColor: rememberMe ? 'rgba(37, 99, 235, 1)' : 'rgba(209, 213, 219, 1)',
+    config: { tension: 300, friction: 20 },
+  });
+
+  const checkmarkAnimation = useSpring({
+    opacity: rememberMe ? 1 : 0,
+    transform: rememberMe ? 'scale(1)' : 'scale(0.5)',
+    config: { tension: 300, friction: 20 },
   });
 
   const onSubmit = async (data: AdminLoginFormData) => {
@@ -79,13 +104,9 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-neutral-950 dark:to-neutral-900">
-      {/* Theme Toggle positioned absolutely */}
-      <div className="absolute top-6 right-6">
-        <ThemeToggle />
-      </div>
+    <div className="flex min-h-screen w-full items-center justify-center bg-white dark:bg-neutral-950">
 
-      <div className="squircle-2xl w-full max-w-md bg-white p-8 shadow-xl dark:bg-neutral-900">
+      <div className="w-full max-w-md p-8">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
             Admin Portal
@@ -171,19 +192,63 @@ const AdminLogin = () => {
             )}
           </div>
 
+          <div className="flex items-center justify-between">
+            <div
+              className="flex cursor-pointer items-center gap-2"
+              onClick={() => setRememberMe(!rememberMe)}
+            >
+              <animated.div
+                style={checkboxAnimation}
+                className="flex h-5 w-5 items-center justify-center rounded border transition-colors"
+              >
+                <animated.div style={checkmarkAnimation}>
+                  <Check size={14} className="text-white" strokeWidth={3} />
+                </animated.div>
+              </animated.div>
+              <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                Remember me
+              </span>
+              <input
+                type="hidden"
+                {...register('rememberMe')}
+                value={rememberMe.toString()}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400"
+              onClick={() => console.log('Forgot password clicked')}
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading}
-            className="squircle-xl h-12 w-full bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            className="squircle-xl h-12 w-full bg-blue-600 font-semibold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Authorized personnel only
-          </p>
+        <div className="absolute bottom-12 left-0 right-0 flex justify-center">
+          <button
+            type="button"
+            className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300"
+          >
+            <HelpCircle size={16} />
+            <span>Contact Support</span>
+          </button>
+        </div>
+
+        <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center gap-2 text-xs text-neutral-400">
+          <span>Made with love</span>
+          <animated.div style={{ transform: scale.to((s) => `scale(${s})`) }}>
+            <Heart size={12} className="fill-red-500 text-red-500" />
+          </animated.div>
+          <span>by Reli-Light</span>
         </div>
       </div>
     </div>
