@@ -143,6 +143,14 @@ export const authService = {
     return decoded?.role || null;
   },
 
+  getUserId(): number | null {
+    const token = this.getAccessToken();
+    if (!token) return null;
+
+    const decoded = this.decodeToken(token);
+    return decoded?.user_id || null;
+  },
+
   isAdmin(): boolean {
     const role = this.getUserRole();
     return role === 'admin';

@@ -86,7 +86,11 @@ export const parcelService = {
           } else if (filters.status) {
             parcels = await ParcelQueries.getByStatus(filters.status);
           } else if (filters.owner_user) {
-            parcels = parcels.filter((p) => p.owner_name === filters.owner_user);
+            // Filter by owner_user - check both owner_name and owner_user fields
+            parcels = parcels.filter((p) => 
+              p.owner_name === filters.owner_user || 
+              (p as any).owner_user === filters.owner_user
+            );
           }
 
           // Convert to GeoJSON

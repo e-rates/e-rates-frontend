@@ -17,6 +17,8 @@ import Account from './components/Account/account';
 import { UserAuthProvider, useUserAuth } from './context/UserAuthContext';
 import { FullPageLoader } from '../components/loading-spinner';
 import { useAuth } from '@/hooks/useAuth';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 
 function UserLayoutContent({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -184,8 +186,10 @@ export default function UserLayout({
   children: React.ReactNode;
 }) {
   return (
-    <UserAuthProvider>
-      <UserLayoutContent>{children}</UserLayoutContent>
-    </UserAuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <UserAuthProvider>
+        <UserLayoutContent>{children}</UserLayoutContent>
+      </UserAuthProvider>
+    </QueryClientProvider>
   );
 }

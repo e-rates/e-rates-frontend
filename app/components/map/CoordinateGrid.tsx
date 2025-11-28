@@ -1,6 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+
+interface ParcelGeometry {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+interface ParcelProperties {
+  parcel_ref: string;
+  area_m2: number;
+  [key: string]: any;
+}
+
+interface ParcelFeature {
+  id: string;
+  type: 'Feature';
+  geometry: ParcelGeometry;
+  properties: ParcelProperties;
+}
+
+interface ParcelGeoJSON {
+  type: 'FeatureCollection';
+  features: ParcelFeature[];
+}
 
 interface CoordinateGridProps {
   // Bounding box coordinates (lat/lon or eastings/northings)
@@ -13,18 +36,99 @@ interface CoordinateGridProps {
   gridOpacity?: number;
   gridDivisions?: number; // Number of grid divisions
   labelType?: 'latlon' | 'eastings'; // Type of labels to display
+  // Parcel data
+  parcelData?: ParcelGeoJSON | null;
+  isLoading?: boolean;
+  error?: Error | null;
+  showBasemap?: boolean;
 }
 
+
 const CoordinateGrid: React.FC<CoordinateGridProps> = ({
-  minLat = -1.3,
-  maxLat = -1.25,
-  minLon = 36.8,
-  maxLon = 36.85,
+  minLat: defaultMinLat = -1.3,
+  maxLat: defaultMaxLat = -1.25,
+  minLon: defaultMinLon = 36.8,
+  maxLon: defaultMaxLon = 36.85,
   gridColor = '#888888',
   gridOpacity = 0.4,
   gridDivisions = 10,
   labelType = 'latlon',
+  parcelData,
+  isLoading = false,
+  error = null,
+  showBasemap = false,
 }) => {
+  // Calculate bounds from parcel data if available, always centered on parcel
+  const { minLat, maxLat, minLon, maxLon, centerLat, centerLon } = useMemo(() => {
+    if (!parcelData?.features?.length) {
+      return {
+        minLat: defaultMinLat,
+        maxLat: defaultMaxLat,
+        minLon: defaultMinLon,
+        maxLon: defaultMaxLon,
+        centerLat: (defaultMinLat + defaultMaxLat) / 2,
+        centerLon: (defaultMinLon + defaultMaxLon) / 2,
+      };
+    }
+
+    // Get first parcel's coordinates
+    const feature = parcelData.features[0];
+    const coords = feature.geometry.coordinates[0]; // First ring of polygon
+
+    // Find bounds
+    let minLng = Infinity;
+    let maxLng = -Infinity;
+    let minLt = Infinity;
+    let maxLt = -Infinity;
+    let validPoints = 0;
+
+    coords.forEach(([lng, lat]) => {
+      // Filter out invalid points (0,0) which are common artifacts
+      if (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001) return;
+      
+      minLng = Math.min(minLng, lng);
+      maxLng = Math.max(maxLng, lng);
+      minLt = Math.min(minLt, lat);
+      maxLt = Math.max(maxLt, lat);
+      validPoints++;
+    });
+
+    // If no valid points, fall back to defaults
+    if (validPoints === 0) {
+      return {
+        minLat: defaultMinLat,
+        maxLat: defaultMaxLat,
+        minLon: defaultMinLon,
+        maxLon: defaultMaxLon,
+        centerLat: (defaultMinLat + defaultMaxLat) / 2,
+        centerLon: (defaultMinLon + defaultMaxLon) / 2,
+      };
+    }
+
+    // Calculate center of parcel
+    const centerLt = (minLt + maxLt) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+
+    // Calculate the range needed to show the parcel
+    const latRange = maxLt - minLt;
+    const lngRange = maxLng - minLng;
+    
+    // Use the larger range to maintain aspect ratio and add padding
+    // Use a minimum range to prevent zooming in too far on single points or tiny parcels
+    const maxRange = Math.max(latRange, lngRange, 0.001); 
+    const paddedRange = maxRange * 1.5; // 50% padding on all sides
+
+    // Center the view on the parcel with equal padding on all sides
+    return {
+      minLat: centerLt - paddedRange / 2,
+      maxLat: centerLt + paddedRange / 2,
+      minLon: centerLng - paddedRange / 2,
+      maxLon: centerLng + paddedRange / 2,
+      centerLat: centerLt,
+      centerLon: centerLng,
+    };
+  }, [parcelData, defaultMinLat, defaultMaxLat, defaultMinLon, defaultMaxLon]);
+
   // Calculate step sizes
   const latStep = (maxLat - minLat) / gridDivisions;
   const lonStep = (maxLon - minLon) / gridDivisions;
@@ -45,8 +149,44 @@ const CoordinateGrid: React.FC<CoordinateGridProps> = ({
     return value.toFixed(decimals);
   };
 
+  // Convert parcel coordinates to SVG path
+  const parcelPath = useMemo(() => {
+    if (!parcelData?.features?.length) return null;
+
+    const feature = parcelData.features[0];
+    const coords = feature.geometry.coordinates[0];
+
+    // Convert lat/lon to percentage position
+    const points = coords.map(([lng, lat]) => {
+      const x = ((lng - minLon) / (maxLon - minLon)) * 100;
+      const y = 100 - ((lat - minLat) / (maxLat - minLat)) * 100; // Invert Y
+      return `${x},${y}`;
+    });
+
+    return `M ${points.join(' L ')} Z`;
+  }, [parcelData, minLat, maxLat, minLon, maxLon]);
+
   return (
     <div className="absolute inset-0 h-full w-full overflow-hidden bg-white dark:bg-neutral-950">
+      {/* Basemap overlay */}
+      {showBasemap && centerLat && centerLon && (
+        <div 
+          className="absolute inset-0"
+          style={{ 
+            zIndex: 0,
+            backgroundImage: `url(https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/17/${Math.floor((centerLat + 90) / 180 * Math.pow(2, 17))}/${Math.floor((centerLon + 180) / 360 * Math.pow(2, 17))})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.7,
+          }}
+        >
+          {/* OpenStreetMap attribution */}
+          <div className="absolute right-2 bottom-2 bg-white/80 px-2 py-1 text-[8px] text-neutral-600 dark:bg-neutral-900/80 dark:text-neutral-400">
+            © Esri, Maxar, Earthstar Geographics
+          </div>
+        </div>
+      )}
+
       {/* Grid SVG */}
       <svg
         className="absolute inset-0 h-full w-full"
@@ -80,6 +220,17 @@ const CoordinateGrid: React.FC<CoordinateGridProps> = ({
             opacity={gridOpacity}
           />
         ))}
+
+        {/* Parcel polygon */}
+        {parcelPath && (
+          <path
+            d={parcelPath}
+            fill="rgba(34, 197, 94, 0.2)"
+            stroke="rgba(34, 197, 94, 0.8)"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
       </svg>
 
       {/* Coordinate Labels */}
@@ -169,15 +320,6 @@ const CoordinateGrid: React.FC<CoordinateGridProps> = ({
               </div>
             );
           })}
-        </div>
-
-        {/* Center info */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="bg-white/70 px-2 py-1 dark:bg-neutral-900/70">
-            <p className="font-mono text-[9px] text-neutral-400 dark:text-neutral-600">
-              Ready for shapefile
-            </p>
-          </div>
         </div>
       </div>
     </div>

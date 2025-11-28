@@ -7,7 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { columns, type HistoryRecord } from './historyTypes';
-import { getAuthToken } from '@/lib/api';
+import { authService } from '@/lib/auth';
 
 const History = () => {
   const [data, setData] = useState<HistoryRecord[]>([]);
@@ -17,10 +17,13 @@ const History = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const token = getAuthToken();
+        const token = await authService.getValidAccessToken();
+        if (!token) {
+          throw new Error('Authentication required');
+        }
         const response = await fetch('/api/user/history', {
           headers: {
-            ...(token && { Authorization: `Bearer ${token}` }),
+            Authorization: `Bearer ${token}`,
           },
         });
 

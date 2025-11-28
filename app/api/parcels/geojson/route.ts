@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       params[key] = value;
     });
 
-    console.log('Proxying to Django:', `${BACKEND_URL}/api/parcels/geojson/`);
+    console.log('📡 API Route - Proxying to Django with params:', params);
+    console.log('📡 API Route - Full URL:', `${BACKEND_URL}/api/parcels/geojson/`);
 
     const response = await axios.get(`${BACKEND_URL}/api/parcels/geojson/`, {
       headers: {

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, Heart, Check, HelpCircle } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { useSpring, animated } from '@react-spring/web';
+import { ERatesLogo } from '@/app/components/LandParcelGrid';
 
 
 const AdminLoginSchema = z.object({
@@ -30,6 +31,7 @@ const AdminLogin = () => {
     handleSubmit,
     register,
     formState: { errors },
+    setValue,
   } = useForm<AdminLoginFormData>({ resolver: zodResolver(AdminLoginSchema) });
 
   const usernameBorderAnimation = useSpring({
@@ -107,6 +109,9 @@ const AdminLogin = () => {
     <div className="flex min-h-screen w-full items-center justify-center bg-white dark:bg-neutral-950">
 
       <div className="w-full max-w-md p-8">
+        {/* Animated E-RATES Logo */}
+        <ERatesLogo />
+
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">
             Admin Portal
@@ -195,7 +200,11 @@ const AdminLogin = () => {
           <div className="flex items-center justify-between">
             <div
               className="flex cursor-pointer items-center gap-2"
-              onClick={() => setRememberMe(!rememberMe)}
+              onClick={() => {
+                const newValue = !rememberMe;
+                setRememberMe(newValue);
+                setValue('rememberMe', newValue);
+              }}
             >
               <animated.div
                 style={checkboxAnimation}
@@ -208,11 +217,6 @@ const AdminLogin = () => {
               <span className="text-sm text-neutral-600 dark:text-neutral-400">
                 Remember me
               </span>
-              <input
-                type="hidden"
-                {...register('rememberMe')}
-                value={rememberMe.toString()}
-              />
             </div>
 
             <button
