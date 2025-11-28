@@ -3,6 +3,7 @@ import { DM_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from './providers';
 import { ThemedToaster } from './components/themed-toaster';
+import { ThemeController } from './components/ThemeController';
 
 const dmSans = DM_Sans({
   variable: '--font-dm-sans',
@@ -29,6 +30,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ThemeController />
           {children}
           <ThemedToaster />
         </ThemeProvider>

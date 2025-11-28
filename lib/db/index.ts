@@ -2,7 +2,7 @@
 export {
   initDB,
   getDB,
-  getSQLite,
+
   executeSQL,
   executeSingleSQL,
   getMetadata,

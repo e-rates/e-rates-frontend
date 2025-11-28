@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { syncService, SyncStatus } from '@/lib/db/sync';
 import { RefreshCw, Database, CheckCircle, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 
 export function SyncIndicator() {
   const [status, setStatus] = useState<SyncStatus>({

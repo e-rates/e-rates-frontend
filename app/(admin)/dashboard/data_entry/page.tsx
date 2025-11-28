@@ -259,7 +259,7 @@ const DataEntry = () => {
   const handleCancelUpload = () => {
     setDuplicateCheckResult(null);
     setProcessedFeatures(null);
-    toast.info('Upload cancelled');
+    toast('Upload cancelled', { icon: 'ℹ️' });
   };
 
   return (

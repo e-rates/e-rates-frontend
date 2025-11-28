@@ -1,6 +1,6 @@
 'use client';
 
-import { useSpring, animated, useSprings } from '@react-spring/web';
+import { useSpring, animated, useSprings, to } from '@react-spring/web';
 import { useEffect, useState } from 'react';
 
 export const ERatesLogo = () => {
@@ -42,14 +42,14 @@ export const ERatesLogo = () => {
             key={index}
             style={{
               opacity: style.opacity,
-              transform: style.rotate.to(r => 
-                style.y.to(y => `rotate(${r}deg) translateY(${y}px)`)
+              transform: to([style.rotate, style.y], (r, y) => 
+                `rotate(${r}deg) translateY(${y}px)`
               ),
             }}
             className={`text-3xl font-bold ${
               letters[index] === '-' 
-                ? 'text-neutral-300 dark:text-neutral-700' 
-                : 'text-neutral-300 dark:text-neutral-700'
+                ? 'text-neutral-900 dark:text-neutral-100' 
+                : 'text-neutral-900 dark:text-neutral-100'
             }`}
           >
             {letters[index]}

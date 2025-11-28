@@ -28,7 +28,7 @@ export function ThemeToggle() {
   const handleMouseUp = () => setIsPressed(false);
   const handleMouseLeave = () => setIsPressed(false);
 
-  const handleClick = async (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
     // Prevent multiple transitions at once
     if (isTransitioning) return;
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { User, Crown, Camera, Upload } from 'lucide-react';
+import { Crown, Camera, Upload } from 'lucide-react';
 
 interface ProfilePictureProps {
   profilePicture?: string | null;

@@ -11,7 +11,13 @@ const nextConfig: NextConfig = {
 
   // Optimize compilation speed
   experimental: {
-    optimizePackageImports: ['lucide-react', 'leaflet', 'react-leaflet', '@radix-ui/react-select', '@radix-ui/react-dropdown-menu'],
+    optimizePackageImports: [
+      'lucide-react',
+      'leaflet',
+      'react-leaflet',
+      '@radix-ui/react-select',
+      '@radix-ui/react-dropdown-menu',
+    ],
   },
 
   // Turbopack configuration for Next.js 16

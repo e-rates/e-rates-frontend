@@ -31,7 +31,9 @@ class SyncService {
 
   subscribe(callback: (status: SyncStatus) => void) {
     this.listeners.add(callback);
-    return () => this.listeners.delete(callback);
+    return () => {
+      this.listeners.delete(callback);
+    };
   }
 
   private notifyListeners(status: SyncStatus) {
@@ -136,7 +138,7 @@ class SyncService {
     }
 
     try {
-      const response = await api.get('/api/admin/payments', token);
+      const response = (await api.get('/api/admin/payments', token)) as any;
       const payments = response.data || [];
 
       const db = await getDB();

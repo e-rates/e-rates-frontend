@@ -10,10 +10,14 @@ interface ParcelDetails {
   owner_id: string;
   area_m2: number;
   area_acres: number;
+  area?: number;
   status: string;
   centroid: {
     lat: number;
     lng: number;
+  } | {
+    type: 'Point';
+    coordinates: [number, number];
   };
   is_paid_current_year?: boolean;
   payment_status?: string;
@@ -49,13 +53,15 @@ export function ParcelDetailsCard({ parcel, onClose }: ParcelDetailsCardProps) {
     if (!parcel.centroid) return { lat: 0, lng: 0 };
 
     // Format 1: { lat, lng }
-    if (typeof parcel.centroid.lat === 'number') {
+    if ('lat' in parcel.centroid) {
       return { lat: parcel.centroid.lat, lng: parcel.centroid.lng };
     }
 
     // Format 2: { type: 'Point', coordinates: [lng, lat] }
     if (
+      'type' in parcel.centroid &&
       parcel.centroid.type === 'Point' &&
+      'coordinates' in parcel.centroid &&
       Array.isArray(parcel.centroid.coordinates)
     ) {
       return {

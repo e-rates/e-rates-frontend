@@ -36,7 +36,7 @@ export class ParcelQueries {
       .filter(
         (p) =>
           p.parcel_number.toLowerCase().includes(lowerQuery) ||
-          p.owner_name.toLowerCase().includes(lowerQuery) ||
+          (p.owner_name && p.owner_name.toLowerCase().includes(lowerQuery)) ||
           (p.owner_phone && p.owner_phone.toLowerCase().includes(lowerQuery))
       )
       .slice(0, 100);
@@ -85,7 +85,7 @@ export class ParcelQueries {
         if (existing) {
           existing.count++;
         } else {
-          acc.push({ status: p.status, count: 1 });
+          acc.push({ status: p.status || 'unknown', count: 1 });
         }
         return acc;
       },
@@ -98,7 +98,7 @@ export class ParcelQueries {
         if (existing) {
           existing.count++;
         } else {
-          acc.push({ zone: p.zone, count: 1 });
+          acc.push({ zone: p.zone || 'unknown', count: 1 });
         }
         return acc;
       },
@@ -157,7 +157,7 @@ export class PaymentQueries {
     const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
 
     const byMethod = payments.reduce(
-      (acc, p) => {
+      (acc: { payment_method: string; count: number; total: number }[], p) => {
         const existing = acc.find((m) => m.payment_method === p.payment_method);
         if (existing) {
           existing.count++;
@@ -185,9 +185,7 @@ export class PaymentQueries {
 export class ActivityLogQueries {
   static async log(log: Omit<ActivityLog, 'id'>): Promise<void> {
     const db = await getDB();
-    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     await db.add('activity_log', {
-      id,
       ...log,
     } as ActivityLog);
   }

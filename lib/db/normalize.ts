@@ -14,6 +14,7 @@ export interface BackendParcelProperties {
   owner_username?: string;
   parcel_ref?: string;
   area_m2?: number;
+  centroid?: any;
   props?: {
     area_name?: string;
     Parcel_No?: string;
