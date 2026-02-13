@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     // Forward the request to Django backend
     const response = await fetch(
-      'http://127.0.0.1:8000/api/parcels/upload_shapefile/',
+      'http://16.16.75.175/api/parcels/upload_shapefile/',
       {
         method: 'POST',
         headers: {

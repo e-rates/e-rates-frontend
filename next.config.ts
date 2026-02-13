@@ -58,15 +58,15 @@ const nextConfig: NextConfig = {
       // Next.js API routes take precedence over rewrites
       {
         source: '/api/token/:path*',
-        destination: 'http://127.0.0.1:8000/api/token/:path*',
+        destination: 'http://16.16.75.175/api/token/:path*',
       },
       {
         source: '/api/users/:path*',
-        destination: 'http://127.0.0.1:8000/api/users/:path*',
+        destination: 'http://16.16.75.175/api/users/:path*',
       },
       {
         source: '/api/admin/:path*',
-        destination: 'http://127.0.0.1:8000/api/admin/:path*',
+        destination: 'http://16.16.75.175/api/admin/:path*',
       },
     ];
   },

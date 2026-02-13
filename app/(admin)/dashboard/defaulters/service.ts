@@ -1,7 +1,7 @@
 import { authService } from '@/lib/auth';
 import { DefaultersFilters, DefaultersResponse } from './types';
 
-const BACKEND_URL = 'http://127.0.0.1:8000';
+const BACKEND_URL = 'http://16.16.75.175';
 
 /**
  * Build query string from filters object

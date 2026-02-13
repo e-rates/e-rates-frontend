@@ -145,7 +145,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           toast.error('Please log in to search parcels');
           return;
         }
-        const response = await axios.get(`http://127.0.0.1:8000/api/parcels/geojson/?search=${encodeURIComponent(parcelRef)}`, {
+        const response = await axios.get(`http://16.16.75.175/api/parcels/geojson/?search=${encodeURIComponent(parcelRef)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

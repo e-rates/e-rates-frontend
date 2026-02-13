@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     }
 
     // Call the backend token endpoint
-    const response = await fetch('http://127.0.0.1:8000/api/token/', {
+    const response = await fetch('http://16.16.75.175/api/token/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

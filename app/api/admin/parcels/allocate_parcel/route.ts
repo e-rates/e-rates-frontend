@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const response = await fetch(
-      'http://127.0.0.1:8000/api/parcels/allocate_parcel/',
+      'http://16.16.75.175/api/parcels/allocate_parcel/',
       {
         method: 'POST',
         headers: {
