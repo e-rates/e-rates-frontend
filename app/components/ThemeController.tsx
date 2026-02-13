@@ -2,24 +2,26 @@
 
 import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function ThemeController() {
   const { setTheme, theme } = useTheme();
   const pathname = usePathname();
+  const hasSetInitialTheme = useRef(false);
 
   useEffect(() => {
-    if (!pathname) return;
+    if (!pathname || hasSetInitialTheme.current) return;
 
-    // Force Dark Mode for Dashboard routes
+    // Only set initial theme once, then respect user's manual toggle
+    hasSetInitialTheme.current = true;
+
+    // Set initial theme based on route (only on first load)
     if (pathname.startsWith('/dashboard')) {
-      if (theme !== 'dark') {
+      if (theme === 'system' || !theme) {
         setTheme('dark');
       }
-    } 
-    // Force Light Mode for Login and other User routes
-    else {
-      if (theme !== 'light') {
+    } else {
+      if (theme === 'system' || !theme) {
         setTheme('light');
       }
     }

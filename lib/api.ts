@@ -235,7 +235,7 @@ export async function uploadShapefile(
       });
 
       // Use the backend API directly
-      xhr.open('POST', 'http://127.0.0.1:8080/api/parcels/upload_shapefile');
+      xhr.open('POST', 'http://127.0.0.1:8000/api/parcels/upload_shapefile');
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.send(formData);
     });

@@ -79,7 +79,7 @@ const QuickToolsBar = () => {
           const token = await authService.getValidAccessToken();
           if (!token) return;
           const response = await axios.get(
-            `http://127.0.0.1:8080/api/parcels/geojson/?search=${encodeURIComponent(searchValue)}`,
+            `http://127.0.0.1:8000/api/parcels/geojson/?search=${encodeURIComponent(searchValue)}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
