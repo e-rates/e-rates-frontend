@@ -13,7 +13,7 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: 'E-Rates',
-  description: 'Exchange rate management system',
+  description: 'Land Rates Management System',
 };
 
 export default function RootLayout({
