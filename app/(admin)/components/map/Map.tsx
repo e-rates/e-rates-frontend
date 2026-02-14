@@ -233,14 +233,7 @@ const Map = () => {
 
   return (
     <div className="relative h-full w-full">
-      {locationError && (
-        <div className="squircle-lg absolute top-4 left-4 z-1000 bg-yellow-100 p-3 text-sm text-yellow-800 shadow-lg">
-          <strong>Location Access:</strong> {locationError}
-          <br />
-          <span className="text-xs">Using default location instead</span>
-        </div>
-      )}
-
+      {/* Location access popup removed as requested */}
       {isMapLocked && (
         <div className="squircle-lg absolute top-20 right-4 z-1000 flex items-center gap-2 bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
           <GlobeLock size={16} />
