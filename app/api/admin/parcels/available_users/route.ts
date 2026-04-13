@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (search) params.append('search', search);
 
     const queryString = params.toString();
-    const url = `http://16.16.75.175/api/parcels/available_users/${queryString ? `?${queryString}` : ''}`;
+    const url = `http://5.189.150.44/api/parcels/available_users/${queryString ? `?${queryString}` : ''}`;
 
     const response = await fetch(url, {
       headers: {

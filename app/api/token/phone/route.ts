@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch('http://16.16.75.175/api/token/phone/', {
+    const response = await fetch('http://5.189.150.44/api/token/phone/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

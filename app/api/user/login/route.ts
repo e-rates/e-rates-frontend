@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await axios.post<TokenResponse>(
-      'http://16.16.75.175/api/token/phone/',
+      'http://5.189.150.44/api/token/phone/',
       {
         phone: phonenumber,
         password,

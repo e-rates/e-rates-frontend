@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Forward the request to the backend API
     const backendResponse = await fetch(
-      'http://16.16.75.175/api/parcels/upload_shapefile/',
+      'http://5.189.150.44/api/parcels/upload_shapefile/',
       {
         method: 'POST',
         headers: {

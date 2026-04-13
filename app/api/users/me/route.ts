@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const token = authHeader.split(' ')[1];
 
     // Forward the request to Django backend
-    const response = await fetch('http://16.16.75.175/api/users/me/', {
+    const response = await fetch('http://5.189.150.44/api/users/me/', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
