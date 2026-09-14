@@ -91,6 +91,9 @@ export interface Parcel {
   total_amount?: number;
   status?: string;
   zone?: string;
+  county?: string;
+  sub_county?: string;
+  ward?: string;
   coordinates?: string;
   centroid?: any; // Store centroid as object { type: 'Point', coordinates: [lng, lat] }
   geojson?: any; // Store as object, not string (IndexedDB supports this)

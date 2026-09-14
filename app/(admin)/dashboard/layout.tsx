@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { AdminNav } from '../components/AdminNav';
 import QuickAcessTools from '../components/QuickAccess/QuickAcessTools';
@@ -85,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* AI panel pushes layout — no overlay */}
-        <AiPanel userRole={userRole} />
+        <AiPanel userRole={userRole ?? undefined} />
       </div>
     </MapProvider>
   );

@@ -82,8 +82,8 @@ export default function AllocationsPage() {
   const loadData = useCallback(async () => {
     try {
       const [unData, alData] = await Promise.all([
-        backendJson<{ results?: ParcelOption[]; parcels?: ParcelOption[] }>('/api/admin/parcels/unassigned/').catch(() => ({})),
-        backendJson<{ results?: ParcelOption[]; parcels?: ParcelOption[] }>('/api/admin/parcels/allocated/').catch(() => ({})),
+        backendJson<{ results?: ParcelOption[]; parcels?: ParcelOption[] }>('/api/admin/parcels/unassigned/').catch(() => ({ results: [], parcels: [] })),
+        backendJson<{ results?: ParcelOption[]; parcels?: ParcelOption[] }>('/api/admin/parcels/allocated/').catch(() => ({ results: [], parcels: [] })),
       ]);
       setUnassigned(unData.results ?? unData.parcels ?? []);
       setAllocatedList(alData.results ?? alData.parcels ?? []);
