@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
@@ -11,19 +12,9 @@ export interface TokenResponse {
   refresh: string;
 }
 
-export interface LoginResponse {
-  success: boolean;
-  data?: {
-    access: string;
-    refresh: string;
-  };
-  message?: string;
-  error?: string;
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const body: LoginRequest = await request.json();
+    const body: LoginRequest = await request.json().catch(() => ({ phonenumber: '', password: '' }));
     const { phonenumber, password } = body;
 
     if (!phonenumber || !password) {
@@ -37,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await axios.post<TokenResponse>(
-      'http://5.189.150.44/api/token/phone/',
+      `${BACKEND_URL}/api/token/phone/`,
       {
         phone: phonenumber,
         password,
@@ -46,6 +37,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
         },
+        timeout: 10000,
       }
     );
 
@@ -60,15 +52,34 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('User login error:', error);
 
     if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Cannot reach the authentication server. Please ensure the backend service is running.',
+          },
+          { status: 503 }
+        );
+      }
+
       const status = error.response?.status || 500;
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Invalid credentials';
+      let errorMessage = 'Invalid phone number or password.';
+
+      const respData = error.response?.data;
+      if (typeof respData === 'object' && respData !== null) {
+        errorMessage =
+          respData.detail ||
+          respData.error ||
+          respData.message ||
+          (status === 401 ? 'Invalid phone number or password.' : 'Sign in failed. Please check your credentials.');
+      } else if (typeof respData === 'string' && !respData.includes('<!DOCTYPE') && !respData.includes('<html')) {
+        errorMessage = respData;
+      } else if (status >= 500) {
+        errorMessage = 'Authentication service is temporarily unavailable. Please try again later.';
+      }
 
       return NextResponse.json(
         {
@@ -82,7 +93,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: 'An error occurred during login',
+        error: 'An unexpected error occurred during sign in. Please try again.',
       },
       { status: 500 }
     );

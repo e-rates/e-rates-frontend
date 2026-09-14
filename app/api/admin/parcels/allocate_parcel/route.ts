@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const response = await fetch(
-      'http://5.189.150.44/api/parcels/allocate_parcel/',
+      `${BACKEND_URL}/api/parcels/allocate_parcel/`,
       {
         method: 'POST',
         headers: {

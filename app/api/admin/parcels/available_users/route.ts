@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (search) params.append('search', search);
 
     const queryString = params.toString();
-    const url = `http://5.189.150.44/api/parcels/available_users/${queryString ? `?${queryString}` : ''}`;
+    const url = `${BACKEND_URL}/api/parcels/available_users/${queryString ? `?${queryString}` : ''}`;
 
     const response = await fetch(url, {
       headers: {

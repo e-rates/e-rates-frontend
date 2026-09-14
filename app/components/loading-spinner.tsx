@@ -1,7 +1,7 @@
 'use client';
 
 import { useSpring, animated, config } from '@react-spring/web';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface LoadingSpinnerProps {
   /**

@@ -4,9 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useTheme } from 'next-themes';
 import { ParcelGeoJSONLayer } from '@/app/(admin)/components/map/ParcelGeoJSONLayer';
-import GridOverlay from '@/app/(admin)/components/map/GridOverlay';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { GlobeLock } from 'lucide-react';
@@ -107,6 +105,22 @@ function MapLockHandler({ isLocked }: { isLocked: boolean }) {
   return null;
 }
 
+function FocusWithoutScroll() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const originalFocus = container.focus;
+    container.focus = (options?: FocusOptions) =>
+      originalFocus.call(container, { ...options, preventScroll: true });
+    return () => {
+      container.focus = originalFocus;
+    };
+  }, [map]);
+
+  return null;
+}
+
 function MapStateHandler() {
   const map = useMap();
 
@@ -138,13 +152,12 @@ function MapStateHandler() {
 }
 
 const Map = () => {
-  const { theme } = useTheme();
   const { showGrid, showBaseMap, isMapLocked } = useMapContext();
   const [isMounted, setIsMounted] = useState(false);
   const [mapKey, setMapKey] = useState(0); // Add key to force remount if needed
 
-  // Default center - Harare, Zimbabwe coordinates
-  const defaultCenter: [number, number] = [-17.8252, 31.0335];
+  // Falls back to Nairobi until the browser reports a location or a saved view exists.
+  const defaultCenter: [number, number] = [-1.2921, 36.8219];
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
@@ -178,20 +191,17 @@ const Map = () => {
 
   const savedState = getSavedMapState();
 
-  const mapTiles = {
-    light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    dark: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
-  };
+  const streetTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const streetAttribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-  const tileAttributions = {
-    light:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    dark: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  };
-
-  const isDark = theme === 'dark';
-  const tileUrl = isDark ? mapTiles.dark : mapTiles.light;
-  const attribution = isDark ? tileAttributions.dark : tileAttributions.light;
+  const [baseLayer, setBaseLayer] = useState<'map' | 'satellite'>('satellite');
+  const satelliteUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  const tileUrl = baseLayer === 'satellite' ? satelliteUrl : streetTileUrl;
+  const attribution =
+    baseLayer === 'satellite'
+      ? 'Tiles &copy; Esri, Maxar, Earthstar Geographics'
+      : streetAttribution;
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -233,6 +243,25 @@ const Map = () => {
 
   return (
     <div className="relative h-full w-full">
+      {/* base map switch */}
+      <div
+        data-testid="base-layer-toggle"
+        className="border-border-default bg-main-bg absolute top-3 left-3 z-[1000] flex border-[0.5px] text-xs"
+      >
+        {(['map', 'satellite'] as const).map((layer) => (
+          <button
+            key={layer}
+            onClick={() => setBaseLayer(layer)}
+            className={`px-3 py-1.5 capitalize transition-colors ${
+              baseLayer === layer
+                ? 'bg-text-primary text-main-bg font-medium'
+                : 'text-text-secondary hover:bg-hover-surface'
+            }`}
+          >
+            {layer}
+          </button>
+        ))}
+      </div>
       {/* Location access popup removed as requested */}
       {isMapLocked && (
         <div className="squircle-lg absolute top-20 right-4 z-1000 flex items-center gap-2 bg-blue-500 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm">
@@ -260,9 +289,10 @@ const Map = () => {
       >
         {showBaseMap && (
           <TileLayer
-            key={`base-${theme}`}
+            key={`base-${baseLayer}`}
             attribution={attribution}
             url={tileUrl}
+            maxZoom={20}
           />
         )}
 
@@ -272,6 +302,7 @@ const Map = () => {
         <MapLockHandler isLocked={isMapLocked} />
         <LocationMarker position={userLocation} />
         <MapStateHandler />
+        <FocusWithoutScroll />
       </MapContainer>
     </div>
   );

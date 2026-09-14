@@ -1,13 +1,11 @@
 'use client';
 
 import { Toaster, resolveValue, Toast } from 'react-hot-toast';
-import { useTheme } from 'next-themes';
 import { useSpring, animated } from '@react-spring/web';
 import { CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 // Custom animated toast component using React Spring
 function AnimatedToast({ toast }: { toast: Toast }) {
-  const { theme } = useTheme();
 
   const springStyle = useSpring({
     from: {
@@ -53,17 +51,15 @@ function AnimatedToast({ toast }: { toast: Toast }) {
     <animated.div
       style={{
         ...springStyle,
-        background: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-        color: theme === 'dark' ? '#ffffff' : '#0d0d0d',
-        border: theme === 'dark' ? '1px solid #3d3d3d' : '1px solid #e0e0e0',
+        background: '#ffffff',
+        color: '#0d0d0d',
+        border: '1px solid #e0e0e0',
         fontSize: '14px',
         fontWeight: '500',
         padding: '16px',
         borderRadius: '12px',
         boxShadow:
-          theme === 'dark'
-            ? '0 4px 12px rgba(0, 0, 0, 0.5)'
-            : '0 4px 12px rgba(0, 0, 0, 0.15)',
+          '0 4px 12px rgba(0, 0, 0, 0.15)',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
@@ -81,7 +77,6 @@ function AnimatedToast({ toast }: { toast: Toast }) {
 }
 
 export function ThemedToaster() {
-  const { theme } = useTheme();
 
   return (
     <Toaster
@@ -93,17 +88,15 @@ export function ThemedToaster() {
 
         // Default style applied to all toasts
         style: {
-          background: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-          color: theme === 'dark' ? '#ffffff' : '#0d0d0d',
-          border: theme === 'dark' ? '1px solid #3d3d3d' : '1px solid #e0e0e0',
+          background: '#ffffff',
+          color: '#0d0d0d',
+          border: '1px solid #e0e0e0',
           fontSize: '14px',
           fontWeight: '500',
           padding: '16px',
           borderRadius: '12px',
           boxShadow:
-            theme === 'dark'
-              ? '0 4px 12px rgba(0, 0, 0, 0.5)'
-              : '0 4px 12px rgba(0, 0, 0, 0.15)',
+            '0 4px 12px rgba(0, 0, 0, 0.15)',
         },
 
         // Success toast styles
@@ -111,7 +104,7 @@ export function ThemedToaster() {
           duration: 4000,
           iconTheme: {
             primary: '#2bc76f',
-            secondary: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+            secondary: '#ffffff',
           },
         },
 
@@ -120,7 +113,7 @@ export function ThemedToaster() {
           duration: 6000,
           iconTheme: {
             primary: '#ff4757',
-            secondary: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+            secondary: '#ffffff',
           },
         },
       }}

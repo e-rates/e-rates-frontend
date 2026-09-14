@@ -1,7 +1,6 @@
 import { authService } from './auth';
 import axios from 'axios';
 import { ParcelQueries } from './db/queries';
-import { syncService } from './db/sync';
 import { initDB, getDB, getMetadata, setMetadata } from './db/init';
 import { normalizeParcelFromBackend } from './db/normalize';
 
@@ -61,7 +60,15 @@ export const parcelService = {
         await initDB();
 
         // Get local data
-        const localParcels = await ParcelQueries.getAll();
+        let localParcels = await ParcelQueries.getAll();
+        // Self-heal: If cached records are from old schema (missing county), clear cache automatically
+        if (localParcels.length > 0 && !localParcels[0].county) {
+          console.log('🔄 Old cache schema detected without county. Auto-refreshing from backend...');
+          const db = await getDB();
+          await db.clear('parcels');
+          await setMetadata('parcels_count', '0');
+          localParcels = [];
+        }
         const cachedCount = await getMetadata('parcels_count');
         const lastSyncStr = await getMetadata('last_sync');
         const lastSync = lastSyncStr ? parseInt(lastSyncStr) : 0;
@@ -104,6 +111,9 @@ export const parcelService = {
                 owner_user: p.owner_name || '',
                 owner_username: p.owner_name || '',
                 parcel_ref: p.parcel_number,
+                county: p.county || '',
+                sub_county: p.sub_county || '',
+                ward: p.ward || '',
                 centroid: p.centroid || { type: 'Point', coordinates: [0, 0] },
                 area_m2: p.area || 0,
                 status: p.status || 'active',
@@ -111,6 +121,9 @@ export const parcelService = {
                   area_name: p.zone || '',
                   Parcel_No: p.parcel_number,
                   REG_SECTIO: '',
+                  county: p.county || '',
+                  sub_county: p.sub_county || '',
+                  ward: p.ward || '',
                 },
                 created_at: new Date(p.created_at || 0).toISOString(),
                 updated_at: new Date(p.updated_at || 0).toISOString(),
@@ -161,6 +174,9 @@ export const parcelService = {
                 owner_user: p.owner_name || '',
                 owner_username: p.owner_name || '',
                 parcel_ref: p.parcel_number,
+                county: p.county || '',
+                sub_county: p.sub_county || '',
+                ward: p.ward || '',
                 centroid: p.centroid || { type: 'Point', coordinates: [0, 0] },
                 area_m2: p.area || 0,
                 status: p.status || 'active',
@@ -168,6 +184,9 @@ export const parcelService = {
                   area_name: p.zone || '',
                   Parcel_No: p.parcel_number,
                   REG_SECTIO: '',
+                  county: p.county || '',
+                  sub_county: p.sub_county || '',
+                  ward: p.ward || '',
                 },
                 created_at: new Date(p.created_at || 0).toISOString(),
                 updated_at: new Date(p.updated_at || 0).toISOString(),

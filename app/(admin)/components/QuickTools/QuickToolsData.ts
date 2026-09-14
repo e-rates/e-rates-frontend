@@ -2,7 +2,6 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Share2,
   Printer,
   Eraser,
   LucideIcon,
@@ -19,7 +18,5 @@ export const QuickToolsItems: QuickToolItem[] = [
   { name: 'Zoom Out', icon: ZoomOut, action: 'zoom-out' },
   { name: 'Reset Zoom', icon: RotateCcw, action: 'reset-zoom' },
   { name: 'Clear Highlights', icon: Eraser, action: 'clear-highlights' },
-  { name: 'Share', icon: Share2, action: 'share' },
   { name: 'Print', icon: Printer, action: 'print' },
 ];
-

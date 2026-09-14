@@ -10,6 +10,9 @@ export interface BackendParcelProperties {
   total_amount?: number;
   status?: string;
   zone?: string;
+  county?: string;
+  sub_county?: string;
+  ward?: string;
   owner_user?: string;
   owner_username?: string;
   parcel_ref?: string;
@@ -56,9 +59,12 @@ export function normalizeParcelFromBackend(feature: BackendGeoJSONFeature) {
     total_amount: props.total_amount || 0,
     status: props.status || 'active',
     zone: props.zone || props.props?.area_name || '',
+    county: props.county || props.props?.county || '',
+    sub_county: props.sub_county || props.props?.sub_county || '',
+    ward: props.ward || props.props?.ward || '',
     coordinates: JSON.stringify(feature.geometry?.coordinates),
-    centroid: props.centroid || null, // Store centroid from backend
-    geojson: feature.geometry, // Store as object, not string!
+    centroid: props.centroid || null,
+    geojson: feature.geometry,
     created_at: props.created_at
       ? new Date(props.created_at).getTime()
       : Date.now(),

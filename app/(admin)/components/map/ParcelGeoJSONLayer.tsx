@@ -1,82 +1,95 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
-import { parcelService } from '@/lib/parcelService';
-import { createRoot } from 'react-dom/client';
-import { ParcelPopup } from './ParcelPopup';
+import { getParcels, isParcelCacheFresh } from '@/lib/parcelCache';
+import { paymentStatusOf, subscribePaymentStatuses, watchPaymentStatuses } from '@/lib/paymentStatuses';
 
-// Helper function for parcel styling
-const getParcelStyle = (feature: any, isHighlighted: boolean) => {
-  const properties = feature?.properties || {};
-  const status = properties.status?.toLowerCase();
-  const paymentStatus = properties.payment_status;
-  const isPaidCurrentYear = properties.is_paid_current_year;
-
-  if (isHighlighted) {
-    return {
-      fillColor: '#FFD600',
-      fillOpacity: 0.9,
-      color: '#FFD600',
-      weight: 5,
-      opacity: 1,
-    };
-  }
-
-  let color = '#2bc76f'; // Default green for active & paid
-
-  // Priority 1: Parcel status
-  if (status === 'inactive') {
-    color = '#8E8E93'; // Gray for inactive
-  } else if (status === 'pending') {
-    color = '#ffa726'; // Orange for pending
-  }
-  // Priority 2: Payment status (only for active parcels)
-  else if (isPaidCurrentYear) {
-    color = '#34C759'; // Green for paid current year
-  } else if (paymentStatus === 'partial') {
-    color = '#FF9500'; // Orange for partial payment
-  } else if (paymentStatus === 'unpaid' || !isPaidCurrentYear) {
-    color = '#FF3B30'; // Red for unpaid
-  }
-
-  return {
-    fillColor: color,
-    fillOpacity: 0.6,
-    color: color,
-    weight: 2,
-    opacity: 0.8,
-  };
+export const PAYMENT_COLORS: Record<string, { color: string; edge: string; label: string }> = {
+  paid: { color: '#16a34a', edge: '#14532d', label: 'Paid' },
+  processing: { color: '#2563eb', edge: '#1e3a8a', label: 'Confirming' },
+  unpaid: { color: '#525252', edge: '#171717', label: 'Unpaid' },
+  overdue: { color: '#dc2626', edge: '#7f1d1d', label: 'Overdue' },
+  not_billed: { color: '#a3a3a3', edge: '#525252', label: 'No bill' },
 };
+
+const INACTIVE = { color: '#d4d4d4', edge: '#a3a3a3', label: 'Inactive' };
+
+/** Selected and highlighted parcels keep their payment colour, deepened, so state stays readable. */
+const getParcelStyle = (
+  feature: any,
+  isHighlighted: boolean,
+  isSelected = false,
+  paymentStatus?: string
+) => {
+  const inactive = feature?.properties?.status?.toLowerCase() === 'inactive';
+  const { color, edge } = inactive ? INACTIVE : PAYMENT_COLORS[paymentStatus ?? 'not_billed'];
+  if (isHighlighted) {
+    return { fillColor: color, fillOpacity: 0.95, color: edge, weight: 4, opacity: 1 };
+  }
+  if (isSelected) {
+    return { fillColor: color, fillOpacity: 0.85, color: edge, weight: 3, opacity: 1, dashArray: '4 3' };
+  }
+  return { fillColor: color, fillOpacity: 0.55, color, weight: 1.5, opacity: 0.9 };
+};
+
+const PARCELS_TOAST_ID = 'parcels-loading';
 
 export function ParcelGeoJSONLayer() {
   const map = useMap();
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
-  const loadingRef = useRef(false);
   const { showGrid, selectedParcel, setSelectedParcel, highlightedParcels } = useMapContext();
   const pathname = usePathname();
 
   // Keep a ref of highlighted parcels to avoid stale closures in the style function
   const highlightedParcelsRef = useRef(highlightedParcels);
-  const isMounted = useRef(true);
+  const selectedRefRef = useRef<string | null>(null);
+  const parcelClickRef = useRef(false);
+  const statusOf = (ref: string) => paymentStatusOf(ref);
+
+  const restyle = () => {
+    geoJsonLayerRef.current?.eachLayer((layer: any) => {
+      if (!layer.feature) return;
+      const ref = layer.feature.properties.parcel_ref;
+      layer.setStyle(
+        getParcelStyle(
+          layer.feature,
+          highlightedParcelsRef.current.includes(ref),
+          ref === selectedRefRef.current,
+          statusOf(ref)
+        )
+      );
+    });
+  };
 
   useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
+    const deselect = () => {
+      if (parcelClickRef.current) {
+        parcelClickRef.current = false;
+        return;
+      }
+      setSelectedParcel(null);
     };
+    map.on('click', deselect);
+    return () => {
+      map.off('click', deselect);
+    };
+  }, [map, setSelectedParcel]);
+  useEffect(() => () => {
+    toast.dismiss(PARCELS_TOAST_ID);
   }, []);
 
   // Persistent highlighting: zoom to selected parcel and keep it highlighted
   useEffect(() => {
-    if (!selectedParcel || !geoJsonLayerRef.current) return;
-
-    const parcelRef = selectedParcel.properties?.parcel_ref || selectedParcel.parcel_ref;
-    if (!parcelRef) return;
+    const parcelRef =
+      selectedParcel?.properties?.parcel_ref || selectedParcel?.parcel_ref || null;
+    selectedRefRef.current = parcelRef;
+    restyle();
+    if (!parcelRef || !geoJsonLayerRef.current || selectedParcel?.source === 'map') return;
 
     // Find the layer for this parcel
     let targetLayer: any = null;
@@ -104,126 +117,41 @@ export function ParcelGeoJSONLayer() {
       return;
     }
 
-    geoJsonLayerRef.current.eachLayer((layer: any) => {
-      if (layer.feature) {
-        const parcelRef = layer.feature.properties.parcel_ref;
-        const isHighlighted = highlightedParcels.includes(parcelRef);
-
-        // Explicitly set style based on current state
-        const style = getParcelStyle(layer.feature, isHighlighted);
-        layer.setStyle(style);
-      }
-    });
+    restyle();
   }, [highlightedParcels]);
+
+  useEffect(() => {
+    watchPaymentStatuses();
+    return subscribePaymentStatuses(restyle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Check if we're on home or parcels-map routes
   const isOnSupportedRoute =
     pathname?.includes('/home') || pathname?.includes('/parcels-map');
 
   useEffect(() => {
-    const loadParcels = async () => {
-      // Prevent multiple simultaneous loads
-      if (loadingRef.current) {
-        return;
-      }
+    let cancelled = false;
 
-      loadingRef.current = true;
-      const loadingToast = toast.loading('Loading parcels...');
-
-      try {
-        // Clean up existing layer
-        if (geoJsonLayerRef.current) {
-          map.removeLayer(geoJsonLayerRef.current);
-        }
-
-        // Fetch all parcels
-        const parcelData = await parcelService.getAllParcels();
-
-        if (!isMounted.current) return;
-
-        console.log('📦 Parcel data received:', {
-          type: parcelData?.type,
-          featureCount: parcelData?.features?.length,
-        });
-
-        if (!parcelData?.features?.length) {
-          toast.error('No parcels found', { id: loadingToast });
-          loadingRef.current = false;
-          return;
-        }
-
-        // Create GeoJSON layer
+    const buildLayer = (parcelData: any, fitToBounds: boolean) => {
         geoJsonLayerRef.current = L.geoJSON(parcelData, {
           style: (feature) => {
             // Use ref for initial style to ensure consistency
-            const isHighlighted = highlightedParcelsRef.current.includes(feature?.properties?.parcel_ref);
-            return getParcelStyle(feature, isHighlighted);
+            const ref = feature?.properties?.parcel_ref;
+            return getParcelStyle(
+              feature,
+              highlightedParcelsRef.current.includes(ref),
+              ref === selectedRefRef.current,
+              statusOf(ref)
+            );
           },
           onEachFeature: (feature, layer) => {
-            // Handle click based on inspector mode
-            layer.on('click', (e) => {
-              if (showGrid && isOnSupportedRoute) {
-                // In inspector mode, show details card
-                L.DomEvent.stopPropagation(e);
-                setSelectedParcel({
-                  id: feature.id,
-                  parcel_ref: feature.properties.parcel_ref,
-                  owner_username: feature.properties.owner_username,
-                  owner_id: feature.properties.owner_id,
-                  area_m2: feature.properties.area_m2,
-                  area_acres: feature.properties.area_acres,
-                  status: feature.properties.status,
-                  centroid: feature.properties.centroid,
-                  is_paid_current_year: feature.properties.is_paid_current_year,
-                  payment_status: feature.properties.payment_status,
-                  paid_years: feature.properties.paid_years,
-                  latest_payment_year: feature.properties.latest_payment_year,
-                  custom_props: feature.properties.custom_props,
-                });
-              }
-            });
+            const ref = feature.properties.parcel_ref;
 
-            // Add popup using React component
-            const popupNode = document.createElement('div');
-            layer.bindPopup(popupNode, {
-              maxWidth: 300,
-              minWidth: 280,
-              className: 'parcel-popup-clean',
-              closeButton: true,
-              autoPan: true,
-              offset: [0, 0], // Bring popup closer to the point
-            });
-
-            layer.on('popupopen', () => {
-              // Clear any pending unmount timeout
-              if ((layer as any)._popupTimeout) {
-                clearTimeout((layer as any)._popupTimeout);
-                (layer as any)._popupTimeout = null;
-              }
-
-              let root = (layer as any)._popupRoot;
-              if (!root) {
-                root = createRoot(popupNode);
-                (layer as any)._popupRoot = root;
-              }
-              root.render(<ParcelPopup properties={feature.properties} />);
-            });
-
-            layer.on('popupclose', () => {
-              if ((layer as any)._popupRoot) {
-                // Delay unmount to allow for animations, but store timeout ID
-                (layer as any)._popupTimeout = setTimeout(() => {
-                  if ((layer as any)._popupRoot) {
-                    (layer as any)._popupRoot.unmount();
-                    (layer as any)._popupRoot = null;
-                  }
-                  (layer as any)._popupTimeout = null;
-                }, 300);
-              }
-            });
-
-            // Add tooltip with parcel reference
-            layer.bindTooltip(feature.properties.parcel_ref || 'Unknown', {
+            layer.bindTooltip(() => {
+              const status = PAYMENT_COLORS[statusOf(ref) ?? 'not_billed'];
+              return `${ref || 'Unknown'} · ${status.label}`;
+            }, {
               permanent: false,
               sticky: true,
               className: 'parcel-tooltip',
@@ -231,74 +159,91 @@ export function ParcelGeoJSONLayer() {
               offset: [0, -10],
             });
 
-            // Hover effects
             layer.on({
               click: (e) => {
-                // Force popup to open at click location
-                layer.openPopup(e.latlng);
-                // Close tooltip to avoid clutter
+                L.DomEvent.stopPropagation(e);
+                parcelClickRef.current = true;
+                setTimeout(() => {
+                  parcelClickRef.current = false;
+                }, 0);
                 layer.closeTooltip();
+                (layer as L.Path).bringToFront();
+                setSelectedParcel({
+                  ...feature.properties,
+                  id: feature.id,
+                  source: 'map',
+                });
               },
               mouseover: (e) => {
-                const target = e.target;
-                // Only apply hover effect if NOT highlighted
-                const isHighlighted = highlightedParcelsRef.current.includes(feature.properties.parcel_ref);
-
-                if (!isHighlighted) {
-                  target.setStyle({
-                    fillOpacity: 0.8,
-                    weight: 3,
-                  });
-                  target.bringToFront();
+                const isEmphasised =
+                  highlightedParcelsRef.current.includes(ref) ||
+                  ref === selectedRefRef.current;
+                if (!isEmphasised) {
+                  e.target.setStyle({ fillOpacity: 0.8, weight: 3 });
                 }
               },
               mouseout: (e) => {
-                // Explicitly restore style using our helper, avoiding resetStyle reliance
-                const isHighlighted = highlightedParcelsRef.current.includes(feature.properties.parcel_ref);
-                const style = getParcelStyle(feature, isHighlighted);
-                e.target.setStyle(style);
+                e.target.setStyle(
+                  getParcelStyle(
+                    feature,
+                    highlightedParcelsRef.current.includes(ref),
+                    ref === selectedRefRef.current,
+                    statusOf(ref)
+                  )
+                );
               },
             });
           },
         });
 
-        if (!isMounted.current) return;
-
-        // Add to map
         geoJsonLayerRef.current.addTo(map);
-        console.log('✅ GeoJSON layer added to map');
 
-        // Fit map to parcels
-        const bounds = geoJsonLayerRef.current.getBounds();
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50] });
+        if (fitToBounds) {
+          const bounds = geoJsonLayerRef.current.getBounds();
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+          }
+        }
+    };
+
+    const loadParcels = async () => {
+      const fromCache = isParcelCacheFresh();
+      if (!fromCache) {
+        toast.loading('Loading parcels...', { id: PARCELS_TOAST_ID });
+      }
+      try {
+        const parcelData = await getParcels();
+        if (cancelled) return;
+
+        if (!parcelData?.features?.length) {
+          toast.error('No parcels found', { id: PARCELS_TOAST_ID });
+          return;
         }
 
-        // Wait for rendering to complete
-        setTimeout(() => {
-          if (isMounted.current) {
-            loadingRef.current = false;
-            toast.success(`Loaded ${parcelData.features.length} parcels`, {
-              id: loadingToast,
-            });
-          }
-        }, 1000); // Give 1 second for rendering
+        buildLayer(parcelData, true);
+        if (!fromCache) {
+          toast.success(`Loaded ${parcelData.features.length} parcels`, {
+            id: PARCELS_TOAST_ID,
+          });
+        }
       } catch (error) {
         console.error('Error loading parcels:', error);
-        loadingRef.current = false;
-        toast.error('Failed to load parcels', { id: loadingToast });
+        if (!cancelled) {
+          toast.error('Failed to load parcels', { id: PARCELS_TOAST_ID });
+        }
       }
     };
 
     loadParcels();
 
-    // Cleanup on unmount
     return () => {
+      cancelled = true;
       if (geoJsonLayerRef.current) {
         map.removeLayer(geoJsonLayerRef.current);
+        geoJsonLayerRef.current = null;
       }
     };
-  }, [map, showGrid, isOnSupportedRoute]);
+  }, [map]);
 
   return null;
 }

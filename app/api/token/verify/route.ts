@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    const response = await fetch('http://5.189.150.44/api/token/verify/', {
+    const response = await fetch(`${BACKEND_URL}/api/token/verify/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

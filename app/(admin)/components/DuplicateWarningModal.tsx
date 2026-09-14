@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { DuplicateCheckResult } from '@/lib/ml/duplicateDetection';
 import { AlertCircle, X } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';

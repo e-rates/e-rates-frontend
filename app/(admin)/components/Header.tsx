@@ -1,26 +1,64 @@
 'use client';
 
 import Image from 'next/image';
-import { ThemeToggle } from '@/app/components/theme-toggle';
 import { RealTimeClock } from '@/app/components/real-time-clock';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { LogOut, Crown, User } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { UserAvatar } from '@/app/components/UserAvatar';
 import { useState, useEffect } from 'react';
 import { userService } from '@/lib/auth';
+import { backendJson } from '@/lib/backend';
+import { NotificationBell } from './NotificationBell';
+import { AskAiButton } from './Assistant/AskAiButton';
+import { useNavCollapse } from './NavCollapse';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+
+function NavCollapseToggle() {
+  const { collapsed, toggle } = useNavCollapse();
+  return (
+    <button
+      onClick={toggle}
+      aria-expanded={!collapsed}
+      aria-controls="admin-main-nav"
+      aria-label={collapsed ? 'Show the menu' : 'Hide the menu'}
+      title={collapsed ? 'Show the menu' : 'Hide the menu for more room'}
+      className="squircle-lg flex cursor-pointer items-center p-2 text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+    >
+      {collapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+    </button>
+  );
+}
 
 interface AdminProfile {
   user_id?: string;
   username?: string;
   phone_number?: string;
   role?: string;
+  county?: string;
   profile_picture?: string;
 }
+
+/** County crests we ship; any other county falls back to its initials. */
+const COUNTY_LOGOS: Record<string, string> = {
+  nairobi: '/NRB-logo.png',
+};
 
 const Header = () => {
   const { logout } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [countyRecord, setCountyRecord] = useState<{ name: string; logo_url: string | null } | null>(null);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    backendJson<{ county: { name: string; logo_url: string | null } | null }>('/api/counties/mine/')
+      .then((data) => {
+        setCountyRecord(data.county);
+        setLogoFailed(false);
+      })
+      .catch(() => setCountyRecord(null));
+  }, [profile?.county]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -48,9 +86,16 @@ const Header = () => {
     router.push('/dashboard/account');
   };
 
+  const county = profile?.county?.trim() || '';
+  const isPlatformOwner = profile?.role === 'owner';
+  // the crest comes from the county record the owner set up; platform owners see the product name
+  const countyLogo = countyRecord?.logo_url || (county ? COUNTY_LOGOS[county.toLowerCase()] : undefined);
+  const countyLabel = county ? `${county.toUpperCase()} COUNTY` : isPlatformOwner ? 'E-RATES' : 'N/A';
+  const countyInitials = county ? county.slice(0, 2).toUpperCase() : isPlatformOwner ? 'ER' : 'N/A';
+
   return (
     <header
-      className="bg-panel-bg border-border-default sticky top-0 z-50 flex h-[60px] w-full items-center justify-between border-b-[0.5px] px-4 backdrop-blur-sm"
+      className="bg-panel-bg border-border-default sticky top-0 z-[1100] flex h-[60px] w-full items-center justify-between border-b-[0.5px] px-4 backdrop-blur-sm"
       role="banner"
       aria-label="Site header"
     >
@@ -63,7 +108,7 @@ const Header = () => {
         {/* Kenya-logo */}
         <div className="h-[41.47px] w-[45px] bg-[#9e9b9b41] dark:bg-[#2E2E2E]">
           <Image
-            src="/kenya-logo.png"
+            src="/kenya-logo.svg"
             alt="Republic of Kenya national emblem"
             width={45}
             height={41.47}
@@ -72,22 +117,30 @@ const Header = () => {
           />
         </div>
         {/* County Logo */}
-        <div>
-          <Image
-            src="/NRB-logo.png"
-            alt="Nairobi County government logo"
-            width={45}
-            height={45.47}
-            className="h-full w-full object-contain"
-            priority
-          />
+        <div className="h-[45px] w-[45px] shrink-0">
+          {countyLogo && !logoFailed ? (
+            <Image
+              src={countyLogo}
+              alt={`${county} County government logo`}
+              width={45}
+              height={45.47}
+              className="h-full w-full object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] saturate-[1.15] dark:drop-shadow-none dark:saturate-100"
+              unoptimized
+              priority
+              onError={() => setLogoFailed(true)}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-neutral-200 text-sm font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-200">
+              {countyInitials}
+            </div>
+          )}
         </div>
         <div className="flex h-full w-[230px] flex-col justify-between p-0">
           <h1
             className="text-regular-lg font-bold dark:font-normal"
             id="site-title"
           >
-            NAIROBI COUNTY
+            {countyLabel}
           </h1>
           <RealTimeClock className="text-regular-sm font-bold dark:font-normal" />
         </div>
@@ -96,41 +149,35 @@ const Header = () => {
       <nav
         role="navigation"
         aria-label="User controls"
-        className="flex items-center space-x-3"
+        className="flex items-center space-x-1"
       >
+        <NavCollapseToggle />
+
+        <AskAiButton userRole={profile?.role} />
+
+        <NotificationBell />
+
         {/* Admin Profile Picture */}
         <button
           onClick={handleProfileClick}
           className="squircle-lg flex items-center space-x-2 p-2 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
           aria-label="View profile"
         >
-          <div className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-r from-blue-500 to-purple-600 p-0.5">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-white dark:bg-neutral-800">
-              {profile?.profile_picture ? (
-                <img
-                  src={profile.profile_picture}
-                  alt="Admin profile"
-                  className="h-full w-full rounded-full object-cover"
-                />
-              ) : (
-                <Crown className="h-4 w-4 text-yellow-500" />
-              )}
-            </div>
-          </div>
-          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            {profile?.username || 'Admin'}
-          </span>
+          <UserAvatar
+            name={profile?.username}
+            src={profile?.profile_picture}
+            size={32}
+          />
         </button>
 
         <button
           onClick={handleLogout}
-          className="squircle-lg flex cursor-pointer items-center space-x-2 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="squircle-lg flex cursor-pointer items-center p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800"
           aria-label="Log out"
+          title="Log out"
         >
           <LogOut size={16} />
-          <span>Logout</span>
         </button>
-        <ThemeToggle />
       </nav>
     </header>
   );

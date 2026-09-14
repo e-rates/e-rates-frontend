@@ -1,255 +1,214 @@
 'use client';
 
-import React, { useState } from 'react';
-import { BlurInLoader } from '@/app/components/blur-in-loader';
-import { Download } from 'lucide-react';
-import { useSpring, animated } from '@react-spring/web';
-import { AreaChart } from './AreaChart';
-import { LineChart } from './LineChart';
-import { dailyData, weeklyData, monthlyData } from './data';
+import React, { Suspense, useEffect, useState } from 'react';
+import { Download, Receipt } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { backendJson } from '@/lib/backend';
+import { downloadCSV, formatDate, formatMoney, today } from '@/lib/format';
+import { parcelOf, type Paginated, type Payment } from '@/lib/payments';
+import { EmptyState } from '../../components/EmptyState';
+import { YearSelect, useYearParam } from '../../components/YearSelect';
 
-const paymentData = [
-  { id: 1, name: 'John Doe', parcel: 'Parcel 1267', amount: '$500', date: 'Jan 15, 2024', status: 'Paid' },
-  { id: 2, name: 'Sarah Smith', parcel: 'Parcel 1214', amount: '$750', date: 'Jan 14, 2024', status: 'Paid' },
-  { id: 3, name: 'Mike Johnson', parcel: 'Parcel 1298', amount: '$1,200', date: 'Jan 12, 2024', status: 'Paid' },
-  { id: 4, name: 'Emily Brown', parcel: 'Parcel 1240', amount: '$350', date: 'Jan 10, 2024', status: 'Pending' },
-  { id: 5, name: 'David Wilson', parcel: 'Parcel 1207', amount: '$900', date: 'Jan 08, 2024', status: 'Paid' },
+const CELL = 'px-5 py-2.5 whitespace-nowrap';
+const HEAD = 'bg-main-bg sticky top-0 z-10 text-left text-[11px] font-medium tracking-wide text-text-tertiary uppercase';
+const button =
+  'border-border-default hover:bg-hover-surface flex items-center gap-2 border-[0.5px] px-3 py-1.5 text-sm text-text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-40';
+
+const STATUS: Record<Payment['status'], { label: string; dot: string }> = {
+  completed: { label: 'Paid', dot: '#16a34a' },
+  processing: { label: 'Confirming', dot: '#2563eb' },
+  pending: { label: 'Unpaid', dot: '#525252' },
+  failed: { label: 'Not completed', dot: '#dc2626' },
+  refunded: { label: 'Refunded', dot: '#a3a3a3' },
+};
+
+const FILTERS: { key: '' | Payment['status']; label: string }[] = [
+  { key: '', label: 'All' },
+  { key: 'completed', label: 'Paid' },
+  { key: 'pending', label: 'Unpaid' },
+  { key: 'processing', label: 'Confirming' },
+  { key: 'failed', label: 'Not completed' },
 ];
 
-export default function RatePaymentsPage() {
-  const [activeTab, setActiveTab] = useState<'tables' | 'area' | 'line'>('tables');
-  const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+const receiptOf = (p: Payment) =>
+  p.status === 'completed' && p.processor_ref && !p.processor_ref.startsWith('ws_CO_') ? p.processor_ref : null;
 
-  const indicatorProps = useSpring({
-    left: activeTab === 'tables' ? '0px' : activeTab === 'area' ? '82px' : '194px',
-    width: activeTab === 'tables' ? '50px' : activeTab === 'area' ? '80px' : '75px',
-    config: { tension: 300, friction: 30 },
-  });
+function PaymentsView() {
+  const [year] = useYearParam();
+  const [status, setStatus] = useState<'' | Payment['status']>('');
+  const [payments, setPayments] = useState<Payment[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [next, setNext] = useState<string | null>(null);
+  const [collected, setCollected] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const getChartData = () => {
-    switch (timeframe) {
-      case 'daily': return dailyData;
-      case 'weekly': return weeklyData;
-      case 'monthly': return monthlyData;
-      default: return dailyData;
+  useEffect(() => {
+    let cancelled = false;
+    const query = new URLSearchParams({ payment_year: String(year), ordering: '-updated_at' });
+    if (status) query.set('status', status);
+    Promise.all([
+      backendJson<Paginated<Payment>>(`/api/payments/?${query}`),
+      backendJson<{ collected_for_year: string }>(`/api/payments/collections/?year=${year}`),
+    ])
+      .then(([page, summary]) => {
+        if (cancelled) return;
+        setPayments(page.results);
+        setTotal(page.count);
+        setNext(page.next);
+        setCollected(summary.collected_for_year);
+        setError(null);
+      })
+      .catch((e: Error) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+      setPayments(null);
+    };
+  }, [year, status]);
+
+  const loadMore = async () => {
+    if (!next) return;
+    setLoadingMore(true);
+    try {
+      const url = new URL(next);
+      const page = await backendJson<Paginated<Payment>>(`${url.pathname}${url.search}`);
+      setPayments((current) => [...(current ?? []), ...page.results]);
+      setNext(page.next);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
+  const exportCsv = () => {
+    if (!payments?.length) return;
+    downloadCSV(
+      ['Payer', 'Plot', 'Year', 'Amount', 'Currency', 'Status', 'Deadline', 'Paid on', 'M-Pesa receipt'],
+      payments.map((p) => [
+        p.user_username,
+        parcelOf(p) ?? '',
+        p.payment_year ?? '',
+        p.amount,
+        p.currency,
+        STATUS[p.status].label,
+        p.deadline ? formatDate(p.deadline) : '',
+        p.status === 'completed' ? formatDate(p.updated_at) : '',
+        receiptOf(p) ?? '',
+      ]),
+      `rate-payments-${year}${status ? `-${status}` : ''}-${today()}.csv`
+    );
+  };
+
   return (
-    <BlurInLoader isLoading={false}>
-      <div className="w-full h-full overflow-hidden flex flex-col bg-white dark:bg-neutral-800/30">
-        
-        {/* Tabs */}
-        <div className="w-full border-b border-border-default bg-elevated-surface px-6 pt-3">
-          <div className="relative flex gap-8 max-w-5xl mx-auto">
-            <button
-              onClick={() => setActiveTab('tables')}
-              className={`pb-3 text-sm font-medium transition-colors ${
-                activeTab === 'tables' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              Tables
-            </button>
-            <button
-              onClick={() => setActiveTab('area')}
-              className={`pb-3 text-sm font-medium transition-colors ${
-                activeTab === 'area' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              Area Graph
-            </button>
-            <button
-              onClick={() => setActiveTab('line')}
-              className={`pb-3 text-sm font-medium transition-colors ${
-                activeTab === 'line' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              Line Graph
-            </button>
-            <animated.div 
-              style={indicatorProps}
-              className="absolute bottom-0 h-[2px] bg-blue-600 dark:bg-white"
-            />
-          </div>
+    <div className="bg-main-bg flex h-full w-full flex-col overflow-hidden">
+      <div className="border-border-default flex flex-wrap items-end justify-between gap-3 border-b-[0.5px] px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold text-text-primary">Rate payments</h1>
+          <p className="mt-0.5 text-sm text-text-tertiary">
+            {payments
+              ? `${total} bill${total === 1 ? '' : 's'} for ${year}${collected ? ` · ${formatMoney(collected)} collected` : ''}`
+              : 'Loading…'}
+          </p>
         </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-5xl space-y-6">
-            
-            {activeTab === 'tables' ? (
-              <>
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl text-text-primary font-medium">Rate Payment Records</h2>
-                    <p className="text-text-tertiary text-sm mt-1">Track and manage all rate payments</p>
-                  </div>
-                  <button className="flex items-center gap-2 rounded-lg bg-teal-500 hover:bg-teal-600 px-4 py-2 text-sm text-white transition-colors">
-                    <Download className="h-4 w-4" />
-                    Export
-                  </button>
-                </div>
-
-                {/* Payments Table */}
-                <div className="squircle-2xl border-[0.5px] border-border-default bg-elevated-surface overflow-hidden">
-                  <div className="w-full text-left">
-                    {/* Table Header */}
-                    <div className="grid grid-cols-12 gap-4 border-b-[0.5px] border-dashed border-border-default bg-hover-surface px-6 py-4 text-sm font-medium text-text-tertiary">
-                      <div className="col-span-3">Name</div>
-                      <div className="col-span-2">Parcel</div>
-                      <div className="col-span-2">Amount</div>
-                      <div className="col-span-3">Date</div>
-                      <div className="col-span-2 text-right">Status</div>
-                    </div>
-
-                    {/* Table Body */}
-                    <div className="divide-y-[0.5px] divide-dashed divide-border-default">
-                      {paymentData.length > 0 ? (
-                        paymentData.map((payment) => (
-                          <div 
-                            key={payment.id} 
-                            className="group grid cursor-pointer grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-hover-surface"
-                          >
-                            <div className="col-span-3 flex items-center gap-3">
-                              <div className={`h-2 w-2 rounded-full ${
-                                payment.status === 'Paid' ? 'bg-green-500/50' : 'bg-yellow-500/50'
-                              }`}></div>
-                              <span className="text-sm text-text-secondary group-hover:text-text-primary">
-                                {payment.name}
-                              </span>
-                            </div>
-                            <div className="col-span-2 flex items-center text-sm text-text-tertiary">
-                              {payment.parcel}
-                            </div>
-                            <div className="col-span-2 flex items-center text-sm text-text-primary font-medium">
-                              {payment.amount}
-                            </div>
-                            <div className="col-span-3 flex items-center text-sm text-text-tertiary">
-                              {payment.date}
-                            </div>
-                            <div className="col-span-2 flex items-center justify-end">
-                              <span className={`text-sm px-2 py-1 rounded-full ${
-                                payment.status === 'Paid' 
-                                  ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
-                                  : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-                              }`}>
-                                {payment.status}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-text-tertiary">
-                          <Download className="mb-2 h-8 w-8 opacity-20" />
-                          <p>No payment records found.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : activeTab === 'area' ? (
-              /* Area Graph View */
-              <div className="space-y-6">
-                {/* Header with Timeframe Selector */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl text-text-primary font-medium">Payment Volume Analytics</h2>
-                    <p className="text-text-tertiary text-sm mt-1">Visualize payment trends over time</p>
-                  </div>
-                  
-                  {/* Timeframe Buttons */}
-                  <div className="flex gap-2 rounded-lg bg-elevated-surface p-1">
-                    <button
-                      onClick={() => setTimeframe('daily')}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        timeframe === 'daily' 
-                          ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      onClick={() => setTimeframe('weekly')}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        timeframe === 'weekly' 
-                          ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      Weekly
-                    </button>
-                    <button
-                      onClick={() => setTimeframe('monthly')}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        timeframe === 'monthly' 
-                          ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      Monthly
-                    </button>
-                  </div>
-                </div>
-
-                {/* Area Chart */}
-                <AreaChart data={getChartData()} timeframe={timeframe} />
-              </div>
-            ) : (
-              /* Line Graph View */
-              <div className="space-y-6">
-                {/* Header with Timeframe Selector */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl text-text-primary font-medium">Payment Volume Analytics</h2>
-                    <p className="text-text-tertiary text-sm mt-1">Visualize payment trends over time</p>
-                  </div>
-                  
-                  {/* Timeframe Buttons */}
-                  <div className="flex gap-2 rounded-lg bg-elevated-surface p-1">
-                    <button
-                      onClick={() => setTimeframe('daily')}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        timeframe === 'daily' 
-                          ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      onClick={() => setTimeframe('weekly')}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        timeframe === 'weekly' 
-                          ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      Weekly
-                    </button>
-                    <button
-                      onClick={() => setTimeframe('monthly')}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        timeframe === 'monthly' 
-                          ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      Monthly
-                    </button>
-                  </div>
-                </div>
-
-                {/* Line Chart */}
-                <LineChart data={getChartData()} timeframe={timeframe} />
-              </div>
-            )}
-
-          </div>
+        <div className="flex items-center gap-3">
+          <YearSelect />
+          <button onClick={exportCsv} disabled={!payments?.length} className={button}>
+            <Download className="h-4 w-4" /> Export CSV
+          </button>
         </div>
       </div>
-    </BlurInLoader>
+
+      <div className="border-border-default flex gap-1 border-b-[0.5px] px-6">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setStatus(f.key)}
+            className={`relative px-3 py-2.5 text-sm transition-colors ${
+              status === f.key ? 'font-medium text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
+            }`}
+          >
+            {f.label}
+            {status === f.key && <span className="absolute inset-x-2 bottom-0 h-[2px] bg-text-primary" />}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {error ? (
+          <EmptyState icon={Receipt} title="Couldn’t load payments" message={error} />
+        ) : payments?.length === 0 ? (
+          <EmptyState icon={Receipt} title={`No ${status ? STATUS[status].label.toLowerCase() + ' ' : ''}bills for ${year}`} message="Try another year or status." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className={HEAD}>
+                <tr className="border-border-default border-b-[0.5px]">
+                  <th className={CELL}>Payer</th>
+                  <th className={CELL}>Plot</th>
+                  <th className={`${CELL} text-right`}>Amount</th>
+                  <th className={CELL}>Status</th>
+                  <th className={CELL}>Due / paid</th>
+                  <th className={CELL}>M-Pesa receipt</th>
+                </tr>
+              </thead>
+              <tbody className="divide-border-default divide-y-[0.5px]">
+                {!payments
+                  ? [0, 1, 2, 3].map((i) => (
+                      <tr key={i}>
+                        <td colSpan={6} className={CELL}>
+                          <div className="bg-hover-surface h-4" />
+                        </td>
+                      </tr>
+                    ))
+                  : payments.map((p) => {
+                      const s = STATUS[p.status];
+                      return (
+                        <tr key={p.payment_id} className="hover:bg-hover-surface">
+                          <td className={`${CELL} font-medium text-text-primary`}>{p.user_username}</td>
+                          <td className={`${CELL} text-text-secondary`}>{parcelOf(p) ?? '—'}</td>
+                          <td className={`${CELL} text-right font-medium text-text-primary tabular-nums`}>
+                            {formatMoney(p.amount, p.currency)}
+                          </td>
+                          <td className={CELL}>
+                            <span className="inline-flex items-center gap-2 text-text-secondary">
+                              <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.dot }} />
+                              {s.label}
+                            </span>
+                          </td>
+                          <td className={`${CELL} text-text-secondary`}>
+                            {p.status === 'completed'
+                              ? `Paid ${formatDate(p.updated_at)}`
+                              : p.days_overdue
+                                ? <span className="text-red-600 dark:text-red-400">{p.days_overdue} days overdue</span>
+                                : p.deadline
+                                  ? `Due ${formatDate(p.deadline)}`
+                                  : '—'}
+                          </td>
+                          <td className={`${CELL} font-mono text-xs text-text-secondary`}>{receiptOf(p) ?? '—'}</td>
+                        </tr>
+                      );
+                    })}
+              </tbody>
+            </table>
+            {next && (
+              <div className="border-border-default border-t-[0.5px] px-6 py-3">
+                <button onClick={loadMore} disabled={loadingMore} className={button}>
+                  {loadingMore ? 'Loading…' : `Show more (${total - (payments?.length ?? 0)} left)`}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function RatePaymentsPage() {
+  return (
+    <Suspense fallback={null}>
+      <PaymentsView />
+    </Suspense>
   );
 }

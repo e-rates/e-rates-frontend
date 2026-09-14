@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextRequest, NextResponse } from 'next/server';
 
 export interface ShapefileUploadResponse {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Forward the request to the backend API
     const backendResponse = await fetch(
-      'http://5.189.150.44/api/parcels/upload_shapefile/',
+      `${BACKEND_URL}/api/parcels/upload_shapefile/`,
       {
         method: 'POST',
         headers: {

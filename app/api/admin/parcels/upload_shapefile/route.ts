@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
 
     // Forward the request to Django backend
     const response = await fetch(
-      'http://5.189.150.44/api/parcels/upload_shapefile/',
+      `${BACKEND_URL}/api/parcels/upload_shapefile/`,
       {
         method: 'POST',
         headers: {

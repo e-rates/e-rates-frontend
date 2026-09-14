@@ -1,40 +1,62 @@
 'use client';
 
-import { CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle2,
+  Clock,
+  RotateCcw,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react';
+import { backendJson } from '@/lib/backend';
+import { formatDate, formatMoney, timeAgo } from '@/lib/format';
+import { parcelOf, type Paginated, type Payment } from '@/lib/payments';
+
+interface NotificationItem {
+  id: string;
+  icon: LucideIcon;
+  tone: string;
+  title: string;
+  message: string;
+  time: string;
+}
+
+const toNotification = (p: Payment): NotificationItem => {
+  const amount = formatMoney(p.amount, p.currency);
+  const parcel = parcelOf(p) ? ` for plot ${parcelOf(p)}` : '';
+  const base = { id: p.payment_id, time: timeAgo(p.updated_at || p.created_at) };
+  switch (p.status) {
+    case 'completed':
+      return { ...base, icon: CheckCircle2, tone: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400', title: 'Payment received', message: `Your payment of ${amount}${parcel} was confirmed.` };
+    case 'refunded':
+      return { ...base, icon: RotateCcw, tone: 'text-neutral-600 bg-neutral-500/10 dark:text-neutral-300', title: 'Payment refunded', message: `${amount}${parcel} was refunded.` };
+    case 'failed':
+      return { ...base, icon: XCircle, tone: 'text-red-600 bg-red-500/10 dark:text-red-400', title: 'Payment failed', message: `Your payment of ${amount}${parcel} did not go through.` };
+    default:
+      if (p.is_defaulter) {
+        return { ...base, icon: AlertCircle, tone: 'text-red-600 bg-red-500/10 dark:text-red-400', title: 'Payment overdue', message: `${amount}${parcel} is ${p.days_overdue ?? 0} day(s) overdue.` };
+      }
+      return {
+        ...base,
+        icon: Clock,
+        tone: 'text-amber-600 bg-amber-500/10 dark:text-amber-400',
+        title: p.deadline ? 'Payment due' : 'Payment pending',
+        message: p.deadline ? `${amount}${parcel} is due on ${formatDate(p.deadline)}.` : `${amount}${parcel} is awaiting confirmation.`,
+      };
+  }
+};
 
 export default function NotificationsPage() {
-  const notifications = [
-    {
-      id: 1,
-      type: 'success',
-      icon: CheckCircle2,
-      title: 'Payment Received',
-      message: 'Your rate payment for Plot #12345 has been confirmed',
-      time: '2 hours ago',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-950/30',
-    },
-    {
-      id: 2,
-      type: 'warning',
-      icon: Clock,
-      title: 'Payment Due Soon',
-      message: 'Your next rate payment is due in 5 days',
-      time: '1 day ago',
-      iconColor: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-50 dark:bg-amber-950/30',
-    },
-    {
-      id: 3,
-      type: 'info',
-      icon: CheckCircle2,
-      title: 'Waiver Approved',
-      message: 'Your waiver request has been approved',
-      time: '3 days ago',
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
-    },
-  ];
+  const [items, setItems] = useState<NotificationItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    backendJson<Paginated<Payment>>('/api/payments/?ordering=-updated_at')
+      .then((page) => setItems(page.results.map(toNotification)))
+      .catch((e: Error) => setError(e.message));
+  }, []);
 
   return (
     <div className="flex min-h-[calc(100vh-120px)] w-full flex-col items-center justify-start p-4 md:p-6">
@@ -43,42 +65,41 @@ export default function NotificationsPage() {
           Notifications
         </h2>
 
-        <div className="space-y-3">
-          {notifications.map((notification) => {
-            const Icon = notification.icon;
-            return (
-              <div
-                key={notification.id}
-                className="squircle-2xl group relative overflow-hidden border border-neutral-200/60 bg-white/80 backdrop-blur-xl transition-all duration-300 hover:scale-[1.01] hover:border-neutral-300 hover:shadow-lg dark:border-neutral-700/60 dark:bg-neutral-800/80 dark:hover:border-neutral-600"
-              >
-                <div className="flex items-start gap-4 p-4">
-                  {/* Icon */}
-                  <div
-                    className={`flex-shrink-0 rounded-full p-2 ${notification.bgColor}`}
-                  >
-                    <Icon className={`h-5 w-5 ${notification.iconColor}`} />
+        {error ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        ) : !items ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-2xl bg-neutral-100 dark:bg-neutral-800" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="squircle-2xl flex flex-col items-center gap-2 border border-dashed border-neutral-200 px-6 py-14 text-center dark:border-neutral-700">
+            <Bell className="h-6 w-6 text-neutral-400" />
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">You’re all caught up</p>
+            <p className="text-xs text-neutral-500">Payment confirmations and due dates will appear here.</p>
+          </div>
+        ) : (
+          <div className="squircle-2xl divide-y divide-neutral-200 overflow-hidden border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
+            {items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.id} className="flex items-start gap-4 p-4 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                  <div className={`shrink-0 rounded-full p-2 ${item.tone}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
-
-                  {/* Content */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-                      {notification.title}
-                    </p>
-                    <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                      {notification.message}
-                    </p>
-                    <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-500">
-                      {notification.time}
-                    </p>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.title}</p>
+                      <span className="shrink-0 text-xs text-neutral-500">{item.time}</span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">{item.message}</p>
                   </div>
                 </div>
-
-                {/* Subtle gradient overlay on hover */}
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent to-neutral-100/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:to-neutral-900/0" />
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

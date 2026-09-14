@@ -1,3 +1,5 @@
+import { BACKEND_URL } from '@/lib/backend';
+import { proxyToBackend } from '@/lib/proxy';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -15,7 +17,7 @@ export async function GET(request: Request) {
     const token = authHeader.split(' ')[1];
 
     // Forward the request to Django backend
-    const response = await fetch('http://5.189.150.44/api/users/me/', {
+    const response = await fetch(`${BACKEND_URL}/api/users/me/`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -43,4 +45,8 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(request: Request) {
+  return proxyToBackend(request, '/api/users/me/', { method: 'PATCH', body: await request.text() });
 }

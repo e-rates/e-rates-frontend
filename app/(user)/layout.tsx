@@ -1,181 +1,157 @@
 'use client';
 
-import Image from 'next/image';
-import { useState, useEffect } from 'react';
-import { useSpring, animated, config } from '@react-spring/web';
+import { useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Bell, FileText } from 'lucide-react';
-import { ThemeToggle } from '../components/theme-toggle';
+
+import { Home, Bell, FileText, Settings, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { Button } from '../components/ui/button';
-import MobileSettings from './components/settings/settings';
-import Account from './components/Account/account';
 import { UserAuthProvider, useUserAuth } from './context/UserAuthContext';
 import { FullPageLoader } from '../components/loading-spinner';
+import { UserAvatar } from '../components/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
+import { authService } from '@/lib/auth';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 
+const navItems = [
+  { name: 'Home', path: '/', icon: Home },
+  { name: 'Notifications', path: '/notifications', icon: Bell },
+  { name: 'Waivers', path: '/waivers', icon: FileText },
+];
+
+const iconButton =
+  'flex h-9 w-9 items-center justify-center text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white';
+
 function UserLayoutContent({ children }: { children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
-
-  // Debug logging
-  console.log('UserLayout:', { pathname, isAuthenticated, isLoading });
+  const { isAuthenticated, isLoading, logout } = useAuth();
+  const { user } = useUserAuth();
 
   useEffect(() => {
-    if (
-      !isLoading &&
-      !isAuthenticated &&
-      pathname !== '/account' &&
-      pathname !== '/account/'
-    ) {
+    if (isLoading) return;
+    if (!isAuthenticated && pathname !== '/account' && pathname !== '/account/') {
       router.push('/account');
+    } else if (isAuthenticated && authService.mustChangePassword()) {
+      router.replace('/change-password');
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
-  const navItems = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Notifications', path: '/notifications', icon: Bell },
-    { name: 'Waivers', path: '/waivers', icon: FileText },
-  ];
+  const signOut = () => {
+    logout();
+    router.push('/account');
+  };
 
-  const dropdownStyles = useSpring({
-    opacity: isOpen ? 1 : 0,
-    transform: isOpen
-      ? 'translateY(0px) scale(1)'
-      : 'translateY(-10px) scale(0.95)',
-    config: config.gentle,
-  });
-
-  const pageStyles = useSpring({
-    from: { opacity: 0, transform: 'translateX(20px)' },
-    to: { opacity: 1, transform: 'translateX(0px)' },
-    config: config.gentle,
-    reset: true,
-    key: pathname,
-  });
-
-  // Special layout for account/login page - no navigation, just show content
   if (pathname === '/account' || pathname === '/account/') {
-    return (
-      <div style={{ background: 'white', minHeight: '100vh' }}>{children}</div>
-    );
+    return <div className="min-h-screen bg-white">{children}</div>;
   }
+  if (isLoading) return <FullPageLoader text="Authenticating..." variant="gradient" />;
+  if (!isAuthenticated) return <div className="min-h-screen bg-white">Redirecting...</div>;
 
-  if (isLoading) {
-    return <FullPageLoader text="Authenticating..." variant="gradient" />;
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div style={{ background: 'white', minHeight: '100vh' }}>
-        Redirecting...
-      </div>
-    );
-  }
 
   return (
-    <div className="w-100vw relative m-0 min-h-screen p-0">
-      {/* Backdrop blur overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-all duration-500" />
-      )}
+    <div className="relative min-h-screen">
+      <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white">
+            E-rates
+          </Link>
 
-      <nav className="sticky top-0 z-50 bg-white dark:bg-neutral-900">
-        <div className="flex h-[60px] w-full flex-row items-center justify-between px-2 md:justify-center md:gap-8">
-          <div>
-            <h1 className="text-2xl tracking-tight text-neutral-900 dark:text-neutral-100">
-              E-rates
-            </h1>
+          <nav className="hidden h-full items-center gap-1 sm:flex" aria-label="Main">
+            {navItems.map((item) => {
+              const isActive = pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`relative flex h-full items-center gap-2 px-4 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-neutral-900 dark:text-white'
+                      : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.name}
+                  {isActive && <span className="absolute right-3 bottom-0 left-3 h-0.5 bg-neutral-900 dark:bg-white" />}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="hidden items-center gap-1 sm:flex">
+            <Link
+              href="/settings"
+              aria-label="Settings"
+              title="Settings"
+              aria-current={pathname === '/settings' ? 'page' : undefined}
+              className={`${iconButton} ${pathname === '/settings' ? 'bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' : ''}`}
+            >
+              <Settings className="h-[18px] w-[18px]" />
+            </Link>
+            <button
+              onClick={signOut}
+              className="ml-1 flex h-9 items-center gap-2 px-3 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
+            </button>
+            <span className="ml-2 h-8 w-8 overflow-hidden rounded-full" title={user?.name || user?.phonenumber}>
+              <UserAvatar name={user?.name || user?.phonenumber} size={32} />
+            </span>
           </div>
 
-          <div className="flex h-[100px] flex-row items-center justify-center px-2">
-            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-              <div className="w-fit">
-                {' '}
-                <DropdownMenuTrigger asChild>
-                  <button className="h-10 w-10 overflow-hidden rounded-full transition-all hover:ring-2 hover:ring-white/20">
-                    <img
-                      src="/avatar.svg"
-                      alt="user"
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                </DropdownMenuTrigger>
-              </div>
-
-              <DropdownMenuContent
-                className="relative mt-4 mr-2 h-full w-[150px] space-y-2"
-                asChild
-              >
-                <animated.div style={dropdownStyles}>
-                  <div className="mr-2 flex h-fit w-full flex-row items-center">
-                    <MobileSettings />
-                  </div>
-                  <div className="mr-2 flex h-fit w-full flex-row items-center">
-                    <Account />
-                  </div>
-                  <div className="mr-2 flex h-fit w-full flex-row items-center">
-                    <ThemeToggle />
-                  </div>
-                </animated.div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button aria-label="Account menu" className="h-9 w-9 shrink-0 overflow-hidden rounded-full sm:hidden">
+                <UserAvatar name={user?.name || user?.phonenumber} size={36} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-none!">
+              <DropdownMenuItem onSelect={() => router.push('/settings')}>
+                <Settings className="h-4 w-4" /> Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={signOut}>
+                <LogOut className="h-4 w-4" /> Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </header>
+
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-50 flex h-16 border-t border-neutral-200 bg-white sm:hidden dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        {navItems.map((item) => {
+          const isActive = pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              href={item.path}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex flex-1 flex-col items-center justify-center gap-1 text-xs font-medium ${
+                isActive ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-500'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              {item.name}
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Navigation Tabs */}
-      <div className="sticky top-[60px] z-40 flex h-16 w-full items-center justify-center border-b border-neutral-200 bg-white/90 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
-        <div
-          className={`flex h-full items-center justify-center space-x-8 px-8 ${
-            pathname === '/account'
-              ? 'md:w-auto md:bg-white/50 md:px-12 md:backdrop-blur-sm md:dark:bg-black/20'
-              : 'w-full'
-          }`}
-        >
-          {navItems.map((item) => {
-            const isActive = pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.path}
-                onClick={() => router.push(item.path)}
-                className={`group relative flex flex-col items-center gap-1 px-4 py-2 transition-all duration-200 ${
-                  isActive
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
-                }`}
-              >
-                <Icon
-                  className={`h-4 w-4 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
-                />
-                <span
-                  className={`text-sm font-medium transition-all duration-200 ${isActive ? 'font-semibold' : ''}`}
-                >
-                  {item.name}
-                </span>
-
-                {/* Active indicator */}
-                {isActive && (
-                  <div className="absolute right-0 bottom-0 left-0 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Main content with animation */}
-      <animated.main style={pageStyles}>{children}</animated.main>
+      <main className="pb-16 sm:pb-0">{children}</main>
     </div>
   );
 }

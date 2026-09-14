@@ -1,4 +1,5 @@
 'use client';
+import { BACKEND_URL } from '@/lib/backend';
 
 import React, { createContext, useContext, useRef, useState } from 'react';
 import { Map as LeafletMap } from 'leaflet';
@@ -145,7 +146,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           toast.error('Please log in to search parcels');
           return;
         }
-        const response = await axios.get(`http://5.189.150.44/api/parcels/geojson/?search=${encodeURIComponent(parcelRef)}`, {
+        const response = await axios.get(`${BACKEND_URL}/api/parcels/geojson/?search=${encodeURIComponent(parcelRef)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -170,7 +171,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
           setHighlightedParcels([...highlightedParcels, parcelRefToHighlight]);
         }
 
-        toast.success(`Parcel ${feature.properties.parcel_ref} - Owner: ${feature.properties.owner_username || 'Unknown'}`, {
+        toast.success(`Parcel ${feature.properties.parcel_ref} - Owner: ${feature.properties.owner_username || 'Unallocated'}`, {
           duration: 3000,
         });
       } else {

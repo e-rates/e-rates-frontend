@@ -1,7 +1,7 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const BACKEND_URL = 'http://5.189.150.44';
 
 export async function GET(request: NextRequest) {
   try {

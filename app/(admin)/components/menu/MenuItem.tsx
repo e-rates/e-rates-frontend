@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { MenuHeader } from './MenuHeader';
 import { MenuItemCard } from './MenuItemCard';
-import { menuItems, bottomMenuItems } from './menuData';
+import { menuItems, bottomMenuItems, visibleMenuItems } from './menuData';
+import { authService } from '@/lib/auth';
 
 interface MenuItemProps {
   isCollapsed: boolean;
@@ -14,15 +15,21 @@ interface MenuItemProps {
 const MenuItem = ({ isCollapsed, onToggleCollapse }: MenuItemProps) => {
   const pathname = usePathname();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [role, setRole] = useState<string | null>(null);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setRole(authService.getUserRole()), []);
+
+  const items = useMemo(() => visibleMenuItems(menuItems, role), [role]);
 
   // Update active index based on current path
   useEffect(() => {
-    const allItems = [...menuItems, ...bottomMenuItems];
+    const allItems = [...items, ...bottomMenuItems];
     const currentIndex = allItems.findIndex((item) => pathname === item.href);
     if (currentIndex !== -1) {
       setActiveIndex(currentIndex);
     }
-  }, [pathname]);
+  }, [pathname, items]);
 
   return (
     <div className="flex h-full w-full flex-col justify-between space-y-2">
@@ -33,7 +40,7 @@ const MenuItem = ({ isCollapsed, onToggleCollapse }: MenuItemProps) => {
         />
 
         <div className="relative left-0 space-y-2">
-          {menuItems.map((item, index) => (
+          {items.map((item, index) => (
             <MenuItemCard
               key={item.name}
               name={item.name}
@@ -54,10 +61,10 @@ const MenuItem = ({ isCollapsed, onToggleCollapse }: MenuItemProps) => {
             name={item.name}
             icon={item.icon}
             href={item.href}
-            isActive={index + menuItems.length === activeIndex}
+            isActive={index + items.length === activeIndex}
             isCollapsed={isCollapsed}
-            index={index + menuItems.length}
-            onClick={() => setActiveIndex(index + menuItems.length)}
+            index={index + items.length}
+            onClick={() => setActiveIndex(index + items.length)}
           />
         ))}
       </div>

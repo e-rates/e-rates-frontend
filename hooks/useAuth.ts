@@ -19,7 +19,7 @@ export function useAuth() {
       if (token) {
         const role = authService.getUserRole();
         setUserRole(role);
-        setIsAdmin(role === 'admin');
+        setIsAdmin(authService.isAdmin());
       } else {
         setUserRole(null);
         setIsAdmin(false);

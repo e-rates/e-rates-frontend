@@ -1,309 +1,372 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Plus, Mic, Send, Clock } from 'lucide-react';
-import { useSpring, animated } from '@react-spring/web';
-import { AreaChart } from './AreaChart';
-import { LineChart } from './LineChart';
-import { dailyData, weeklyData, monthlyData } from './data';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Download, UserCheck, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { AssistantChat } from '../../components/Assistant/AssistantChat';
+import { exportDefaulters, fetchDefaulters } from './service';
+import { backendJson } from '@/lib/backend';
+import { downloadBlob, downloadCSV, formatMoney, today } from '@/lib/format';
+import { titleCase } from '../../components/QuickAccess/WardsPanel';
+import { YearTabs, useYearParam } from '../../components/YearSelect';
+import { EmptyState } from '../../components/EmptyState';
 
-const defaultersData = [
-  { id: 1, name: 'John Doe', parcel: 'Parcel 1267', amount: '$500', dueDate: '2 days overdue' },
-  { id: 2, name: 'Sarah Smith', parcel: 'Parcel 1214', amount: '$750', dueDate: '5 days overdue' },
-  { id: 3, name: 'Mike Johnson', parcel: 'Parcel 1298', amount: '$1,200', dueDate: '10 days overdue' },
-  { id: 4, name: 'Emily Brown', parcel: 'Parcel 1240', amount: '$350', dueDate: '1 day overdue' },
-  { id: 5, name: 'David Wilson', parcel: 'Parcel 1207', amount: '$900', dueDate: '7 days overdue' },
-];
+interface DefaulterRow {
+  payment_id: string;
+  username: string;
+  amount: string;
+  currency: string;
+  days_overdue: number;
+  parcels: { parcel_ref: string; ward?: string }[];
+}
 
-export default function DefaultersPage() {
-  const [text, setText] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'area' | 'line'>('chat');
-  const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+const TABLE_HEAD = 'border-border-default sticky top-0 z-10 bg-main-bg text-left text-[11px] font-medium tracking-wide text-text-tertiary uppercase';
+const CELL = 'px-5 py-2.5 whitespace-nowrap';
 
-  const indicatorProps = useSpring({
-    left: activeTab === 'chat' ? '0px' : activeTab === 'tables' ? '62px' : activeTab === 'area' ? '184px' : '296px',
-    width: activeTab === 'chat' ? '40px' : activeTab === 'tables' ? '80px' : activeTab === 'area' ? '80px' : '75px',
-    config: { tension: 300, friction: 30 },
-  });
+const STATUS: Record<string, { label: string; dot: string }> = {
+  overdue: { label: 'Overdue', dot: '#dc2626' },
+  unpaid: { label: 'Unpaid', dot: '#525252' },
+  processing: { label: 'Confirming', dot: '#2563eb' },
+  paid: { label: 'Paid', dot: '#16a34a' },
+  not_billed: { label: 'No bill', dot: '#a3a3a3' },
+};
 
-  const getChartData = () => {
-    switch (timeframe) {
-      case 'daily': return dailyData;
-      case 'weekly': return weeklyData;
-      case 'monthly': return monthlyData;
-      default: return dailyData;
+function StatusCell({ status }: { status: string }) {
+  const s = STATUS[status] ?? STATUS.not_billed;
+  return (
+    <span className="inline-flex items-center gap-2 text-text-secondary">
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.dot }} />
+      {s.label}
+    </span>
+  );
+}
+
+function TableHeader({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: React.ReactNode;
+  subtitle: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="border-border-default flex flex-wrap items-end justify-between gap-3 border-b-[0.5px] px-6 py-4">
+      <div>
+        <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
+        <p className="mt-0.5 text-sm text-text-tertiary">{subtitle}</p>
+      </div>
+      <div className="flex items-center gap-2">{actions}</div>
+    </div>
+  );
+}
+
+const exportButton =
+  'border-border-default hover:bg-hover-surface flex items-center gap-2 border-[0.5px] px-3 py-1.5 text-sm text-text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-40';
+
+function DefaultersTable() {
+  const [rows, setRows] = useState<DefaulterRow[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    fetchDefaulters()
+      .then((data: any) => {
+        setRows(data.results ?? []);
+        setTotal(data.count ?? 0);
+      })
+      .catch((e: Error) => setError(e.message));
+  }, []);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportDefaulters();
+      if (blob.size === 0) {
+        toast('There are no defaulters to export');
+        return;
+      }
+      downloadBlob(blob, `defaulters-${today()}.csv`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setExporting(false);
     }
   };
 
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const target = e.target;
-    setText(target.value);
-    
-    target.style.height = 'auto';
-    target.style.height = `${target.scrollHeight}px`;
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <TableHeader
+        title="All defaulters"
+        subtitle={rows ? `${total} overdue payment${total === 1 ? '' : 's'} · pick a ward on the left to see its parcels` : 'Loading…'}
+        actions={
+          <button onClick={handleExport} disabled={exporting || !rows?.length} className={exportButton}>
+            <Download className="h-4 w-4" />
+            {exporting ? 'Exporting…' : 'Export CSV'}
+          </button>
+        }
+      />
+      {error ? (
+        <EmptyState icon={UserCheck} title="Couldn’t load defaulters" message={error} />
+      ) : rows && rows.length === 0 ? (
+        <EmptyState icon={UserCheck} title="No defaulters" message="Nobody has an overdue rate payment right now." />
+      ) : (
+        <table className="w-full text-sm">
+          <thead className={TABLE_HEAD}>
+            <tr className="border-border-default border-b-[0.5px]">
+              <th className={CELL}>Owner</th>
+              <th className={CELL}>Plot</th>
+              <th className={`${CELL} text-right`}>Amount due</th>
+              <th className={`${CELL} text-right`}>Overdue</th>
+            </tr>
+          </thead>
+          <tbody className="divide-border-default divide-y-[0.5px]">
+            {!rows
+              ? [0, 1, 2].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={4} className={CELL}>
+                      <div className="bg-hover-surface h-4" />
+                    </td>
+                  </tr>
+                ))
+              : rows.map((row) => (
+                  <tr key={row.payment_id} className="hover:bg-hover-surface">
+                    <td className={`${CELL} font-medium text-text-primary`}>{row.username}</td>
+                    <td className={`${CELL} text-text-secondary`}>{row.parcels[0]?.parcel_ref ?? '—'}</td>
+                    <td className={`${CELL} text-right font-medium text-text-primary tabular-nums`}>
+                      {formatMoney(row.amount, row.currency)}
+                    </td>
+                    <td className={`${CELL} text-right text-red-600 tabular-nums dark:text-red-400`}>
+                      {row.days_overdue} day{row.days_overdue === 1 ? '' : 's'}
+                    </td>
+                  </tr>
+                ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+interface WardParcel {
+  parcel_id: string;
+  parcel_ref: string;
+  registration_section: string | null;
+  owner: string;
+  owner_phone: string | null;
+  owner_email: string;
+  area_m2: number | null;
+  land_use: string;
+  status: string;
+  amount: string | null;
+  deadline: string | null;
+  days_overdue: number | null;
+  receipt: string | null;
+  paid_at: string | null;
+}
+
+const area = (m2: number | null) => (!m2 ? '—' : m2 >= 1000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`);
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { dateStyle: 'medium' });
+
+function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: number }) {
+  const router = useRouter();
+  const [rows, setRows] = useState<WardParcel[] | null>(null);
+  const [year, setYear] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    backendJson<{ year: number; parcels: WardParcel[] }>(`/api/payments/ward-parcels/?ward=${encodeURIComponent(ward)}&year=${selectedYear}`)
+      .then((data) => {
+        if (cancelled) return;
+        setRows(data.parcels);
+        setYear(data.year);
+        setError(null);
+      })
+      .catch((e: Error) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+      setRows(null);
+    };
+  }, [ward, selectedYear]);
+
+  const overdue = rows?.filter((r) => r.status === 'overdue') ?? [];
+  const due = (rows ?? []).filter((r) => ['overdue', 'unpaid', 'processing'].includes(r.status));
+  const dueTotal = due.reduce((sum, r) => sum + Number(r.amount ?? 0), 0);
+
+  const exportWard = () => {
+    if (!rows?.length) return;
+    downloadCSV(
+      ['Plot', 'Title ref', 'Owner', 'Phone', 'Email', 'Area (m2)', 'Land use', 'Status', 'Amount', 'Deadline', 'Days overdue', 'Receipt'],
+      rows.map((r) => [
+        r.parcel_ref,
+        r.registration_section ? `${r.registration_section}/${r.parcel_ref}` : '',
+        r.owner,
+        r.owner_phone ?? '',
+        r.owner_email,
+        r.area_m2 ? Math.round(r.area_m2) : '',
+        r.land_use,
+        STATUS[r.status]?.label ?? r.status,
+        r.amount ?? '',
+        r.deadline ? shortDate(r.deadline) : '',
+        r.days_overdue ?? '',
+        r.receipt ?? '',
+      ]),
+      `${ward}-ward-${year ?? ''}-${today()}.csv`
+    );
   };
 
   return (
-    <div className="w-full h-full overflow-hidden flex flex-col bg-white dark:bg-neutral-800/30">
-      
-      {/* Tabs */}
-      <div className="w-full border-b border-border-default bg-elevated-surface px-6 pt-3">
-        <div className="relative flex gap-8 max-w-5xl mx-auto">
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`pb-3 text-sm font-medium transition-colors ${
-              activeTab === 'chat' ? 'text-text-primary dark:text-white' : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-            }`}
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => setActiveTab('tables')}
-            className={`pb-3 text-sm font-medium transition-colors ${
-              activeTab === 'tables' ? 'text-text-primary dark:text-white' : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-            }`}
-          >
-            View Tables
-          </button>
-          <button
-            onClick={() => setActiveTab('area')}
-            className={`pb-3 text-sm font-medium transition-colors ${
-              activeTab === 'area' ? 'text-text-primary dark:text-white' : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-            }`}
-          >
-            Area Graph
-          </button>
-          <button
-            onClick={() => setActiveTab('line')}
-            className={`pb-3 text-sm font-medium transition-colors ${
-              activeTab === 'line' ? 'text-text-primary dark:text-white' : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-            }`}
-          >
-            Line Graph
-          </button>
-          <animated.div 
-            style={indicatorProps}
-            className="absolute bottom-0 h-[2px] bg-blue-600 dark:bg-white"
-          />
-        </div>
-      </div>
-
-      {/* Content Area */}
-      {activeTab === 'chat' ? (
-        <>
-          {/* Scrollable Content Area - Takes up remaining space */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
-            <div className="opacity-50 text-text-primary dark:text-white font-medium text-lg">
-              <p className='tracking-normal text-[14px] text-text-tertiary dark:text-neutral-500'>Chat interface will be shown here...</p>
-            </div>
-          </div>
-          
-          {/* Bottom Input Section - FIXED at bottom, never moves */}
-          <div className="w-full p-4 shrink-0">
-            <div className='bg-elevated-surface dark:bg-neutral-900 w-full max-w-3xl mx-auto border-[0.5px] text-[14px] text-text-primary dark:text-neutral-200 border-border-default dark:border-neutral-600/80 min-h-[52px] h-fit flex flex-row px-3 py-2 gap-3 justify-start items-end rounded-[28px] shadow-lg transition-colors focus-within:bg-hover-surface dark:focus-within:bg-neutral-800'>
-              
-              {/* Left Action Button */}
-              <button className="p-2 text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200 hover:bg-hover-surface dark:hover:bg-neutral-700 rounded-full transition-all mb-0.5">
-                <Plus className="w-5 h-5" />
-              </button>
-
-              {/* Auto-Growing Textarea */}
-              <textarea 
-                ref={textareaRef}
-                value={text}
-                onChange={handleInput}
-                placeholder='Ask Reli Anything' 
-                rows={1}
-                className='bg-transparent flex-1 max-h-[200px] py-3 resize-none focus:outline-none w-full overflow-y-auto scrollbar-hide placeholder:text-text-tertiary dark:placeholder:text-neutral-500'
-                style={{
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                } as React.CSSProperties}
-              />
-
-              {/* Right Action Buttons */}
-              {text.length > 0 ? (
-                 <button 
-                 onClick={() => { 
-                   setText(''); 
-                   if (textareaRef.current) {
-                     textareaRef.current.style.height = 'auto';
-                   }
-                 }}
-                 className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all mb-0.5">
-                   <Send className="w-4 h-4 ml-0.5" />
-                 </button>
-              ) : (
-                <button className="p-2 text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200 hover:bg-hover-surface dark:hover:bg-neutral-700 rounded-full transition-all mb-0.5">
-                  <Mic className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-            
-            <p className="text-center text-[10px] text-red-400 dark:text-rose-200 mt-2 opacity-70">
-              Reli can make mistakes. Please double check responses.
-            </p>
-          </div>
-        </>
-      ) : activeTab === 'tables' ? (
-        /* Table View */
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-5xl space-y-6">
-            <div>
-              <h2 className="text-xl text-text-primary dark:text-white font-medium">Defaulters List</h2>
-              <p className="text-text-tertiary dark:text-neutral-400 text-sm mt-1">Accounts with outstanding payments</p>
-            </div>
-
-            {/* Defaulters Table */}
-            <div className="squircle-2xl border-[0.5px] border-border-default dark:border-neutral-600/10 bg-elevated-surface dark:bg-neutral-800/20 overflow-hidden">
-              <div className="w-full text-left">
-                {/* Table Header */}
-                <div className="grid grid-cols-12 gap-4 border-b-[0.5px] border-dashed border-border-default dark:border-neutral-600/30 bg-hover-surface dark:bg-neutral-800/40 px-6 py-4 text-sm font-medium text-text-tertiary dark:text-neutral-400">
-                  <div className="col-span-3">Name</div>
-                  <div className="col-span-3">Parcel</div>
-                  <div className="col-span-3">Amount Due</div>
-                  <div className="col-span-3 text-right">Status</div>
-                </div>
-
-                {/* Table Body */}
-                <div className="divide-y-[0.5px] divide-dashed divide-border-default dark:divide-neutral-600/10">
-                  {defaultersData.length > 0 ? (
-                    defaultersData.map((defaulter) => (
-                      <div 
-                        key={defaulter.id} 
-                        className="group grid cursor-pointer grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-hover-surface dark:hover:bg-neutral-800/40"
-                      >
-                        <div className="col-span-3 flex items-center gap-3">
-                          <div className="h-2 w-2 rounded-full bg-red-500/50"></div>
-                          <span className="text-sm text-text-secondary dark:text-neutral-200 group-hover:text-text-primary dark:group-hover:text-white">
-                            {defaulter.name}
-                          </span>
-                        </div>
-                        <div className="col-span-3 flex items-center text-sm text-text-tertiary dark:text-neutral-400">
-                          {defaulter.parcel}
-                        </div>
-                        <div className="col-span-3 flex items-center text-sm text-text-primary dark:text-neutral-200 font-medium">
-                          {defaulter.amount}
-                        </div>
-                        <div className="col-span-3 flex items-center justify-end text-sm text-red-400">
-                          {defaulter.dueDate}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-text-tertiary dark:text-neutral-500">
-                      <Clock className="mb-2 h-8 w-8 opacity-20" />
-                      <p>No defaulters found.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : activeTab === 'area' ? (
-        /* Area Graph View */
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-5xl space-y-6">
-            {/* Header with Timeframe Selector */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl text-text-primary dark:text-white font-medium">Defaulter Analytics</h2>
-                <p className="text-text-tertiary dark:text-neutral-400 text-sm mt-1">Visualize defaulter trends over time</p>
-              </div>
-              
-              {/* Timeframe Buttons */}
-              <div className="flex gap-2 rounded-lg bg-elevated-surface dark:bg-neutral-800/40 p-1">
-                <button
-                  onClick={() => setTimeframe('daily')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    timeframe === 'daily' 
-                      ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                      : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-                  }`}
-                >
-                  Daily
-                </button>
-                <button
-                  onClick={() => setTimeframe('weekly')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    timeframe === 'weekly' 
-                      ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                      : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-                  }`}
-                >
-                  Weekly
-                </button>
-                <button
-                  onClick={() => setTimeframe('monthly')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    timeframe === 'monthly' 
-                      ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                      : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-                  }`}
-                >
-                  Monthly
-                </button>
-              </div>
-            </div>
-
-            {/* Area Chart */}
-            <AreaChart data={getChartData()} timeframe={timeframe} />
-          </div>
-        </div>
+    <div className="flex-1 overflow-y-auto">
+      <TableHeader
+        title={`${titleCase(ward)} ward`}
+        subtitle={
+          rows
+            ? `${rows.length} plot${rows.length === 1 ? '' : 's'} · ${overdue.length} overdue · ${formatMoney(dueTotal)} outstanding for ${year}`
+            : 'Loading…'
+        }
+        actions={
+          <>
+            <button onClick={() => router.push(`/dashboard/defaulters?tab=tables${selectedYear !== new Date().getFullYear() ? `&year=${selectedYear}` : ''}`)} className={exportButton}>
+              <X className="h-4 w-4" /> All defaulters
+            </button>
+            <button onClick={exportWard} disabled={!rows?.length} className={exportButton}>
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          </>
+        }
+      />
+      {error ? (
+        <EmptyState icon={UserCheck} title="Couldn’t load this ward" message={error} />
+      ) : rows && rows.length === 0 ? (
+        <EmptyState icon={UserCheck} title="No allocated plots" message="No plots in this ward are allocated to an owner yet." />
       ) : (
-        /* Line Graph View */
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-5xl space-y-6">
-            {/* Header with Timeframe Selector */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl text-text-primary dark:text-white font-medium">Defaulter Analytics</h2>
-                <p className="text-text-tertiary dark:text-neutral-400 text-sm mt-1">Visualize defaulter trends over time</p>
-              </div>
-              
-              {/* Timeframe Buttons */}
-              <div className="flex gap-2 rounded-lg bg-elevated-surface dark:bg-neutral-800/40 p-1">
-                <button
-                  onClick={() => setTimeframe('daily')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    timeframe === 'daily' 
-                      ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                      : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-                  }`}
-                >
-                  Daily
-                </button>
-                <button
-                  onClick={() => setTimeframe('weekly')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    timeframe === 'weekly' 
-                      ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                      : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-                  }`}
-                >
-                  Weekly
-                </button>
-                <button
-                  onClick={() => setTimeframe('monthly')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    timeframe === 'monthly' 
-                      ? 'bg-blue-600 text-white dark:bg-neutral-700' 
-                      : 'text-text-tertiary dark:text-neutral-400 hover:text-text-secondary dark:hover:text-neutral-200'
-                  }`}
-                >
-                  Monthly
-                </button>
-              </div>
-            </div>
-
-            {/* Line Chart */}
-            <LineChart data={getChartData()} timeframe={timeframe} />
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className={TABLE_HEAD}>
+              <tr className="border-border-default border-b-[0.5px]">
+                <th className={CELL}>Plot</th>
+                <th className={CELL}>Title ref.</th>
+                <th className={CELL}>Owner</th>
+                <th className={CELL}>Phone</th>
+                <th className={`${CELL} text-right`}>Area</th>
+                <th className={CELL}>Use</th>
+                <th className={CELL}>Status</th>
+                <th className={`${CELL} text-right`}>{year} bill</th>
+                <th className={CELL}>Due / paid</th>
+                <th className={CELL}>Receipt</th>
+              </tr>
+            </thead>
+            <tbody className="divide-border-default divide-y-[0.5px]">
+              {!rows
+                ? [0, 1, 2, 3].map((i) => (
+                    <tr key={i}>
+                      <td colSpan={10} className={CELL}>
+                        <div className="bg-hover-surface h-4" />
+                      </td>
+                    </tr>
+                  ))
+                : rows.map((r) => (
+                    <tr key={r.parcel_id} className="hover:bg-hover-surface">
+                      <td className={`${CELL} font-medium text-text-primary`}>{r.parcel_ref}</td>
+                      <td className={`${CELL} text-text-tertiary`}>
+                        {r.registration_section ? `${r.registration_section}/${r.parcel_ref}` : '—'}
+                      </td>
+                      <td className={`${CELL} text-text-primary`} title={r.owner_email}>{r.owner}</td>
+                      <td className={`${CELL} text-text-secondary tabular-nums`}>{r.owner_phone || '—'}</td>
+                      <td className={`${CELL} text-right text-text-secondary tabular-nums`}>{area(r.area_m2)}</td>
+                      <td className={`${CELL} text-text-secondary capitalize`}>{r.land_use}</td>
+                      <td className={CELL}>
+                        <StatusCell status={r.status} />
+                      </td>
+                      <td className={`${CELL} text-right font-medium text-text-primary tabular-nums`}>
+                        {r.amount ? formatMoney(r.amount) : '—'}
+                      </td>
+                      <td className={`${CELL} text-text-secondary`}>
+                        {r.status === 'paid' && r.paid_at
+                          ? `Paid ${shortDate(r.paid_at)}`
+                          : r.days_overdue
+                            ? <span className="text-red-600 dark:text-red-400">{r.days_overdue} days overdue</span>
+                            : r.deadline
+                              ? `Due ${shortDate(r.deadline)}`
+                              : '—'}
+                      </td>
+                      <td className={`${CELL} font-mono text-xs text-text-secondary`}>
+                        {r.receipt && !r.receipt.startsWith('ws_CO_') ? r.receipt : '—'}
+                      </td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
         </div>
       )}
-
     </div>
+  );
+}
+
+type Tab = 'chat' | 'tables';
+
+function DefaultersView() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const ward = params.get('ward');
+  const [year] = useYearParam();
+  const activeTab: Tab = ward || params.get('tab') === 'tables' ? 'tables' : 'chat';
+
+  const setActiveTab = (tab: Tab) => {
+    const query = new URLSearchParams();
+    if (tab !== 'chat') query.set('tab', tab);
+    if (params.get('year')) query.set('year', params.get('year')!);
+    router.replace(`/dashboard/defaulters${query.toString() ? `?${query}` : ''}`);
+  };
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'chat', label: 'Chat' },
+    { key: 'tables', label: ward ? `View Tables · ${titleCase(ward)}` : 'View Tables' },
+  ];
+
+  return (
+    <div className="bg-main-bg flex h-full w-full flex-col overflow-hidden">
+      <div className="border-border-default flex w-full items-center justify-between gap-4 border-b-[0.5px] px-6 pt-3">
+        <div className="flex gap-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`relative pb-3 text-sm font-medium transition-colors ${
+                activeTab === tab.key ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-text-primary" />}
+            </button>
+          ))}
+        </div>
+        {activeTab === 'tables' && ward && (
+          <div className="flex items-center gap-3">
+            <span className="pb-3 text-xs text-text-tertiary">Rating year</span>
+            <YearTabs />
+          </div>
+        )}
+      </div>
+
+      {activeTab === 'chat' ? (
+        <AssistantChat />
+      ) : ward ? (
+        <WardParcelsTable key={`${ward}-${year}`} ward={ward} year={year} />
+      ) : (
+        <DefaultersTable />
+      )}
+    </div>
+  );
+}
+
+export default function DefaultersPage() {
+  return (
+    <Suspense fallback={null}>
+      <DefaultersView />
+    </Suspense>
   );
 }

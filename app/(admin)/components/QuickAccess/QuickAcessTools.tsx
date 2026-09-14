@@ -18,12 +18,11 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { User2Icon } from 'lucide-react';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
 import CoordinateSearch from './CoordinateSearch';
 import { ParcelDetailsCard } from '../map/ParcelDetailsCard';
-import { NotificationsComponent } from './NotificationsComponent';
+import { QuickAccessPlaceholder } from './QuickAccessPlaceholder';
 
 import toast from 'react-hot-toast';
 
@@ -33,7 +32,6 @@ const QuickAcessTools = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [clickedIndex, setClickedIndex] = useState<number | null>(null);
   const [items, setItems] = useState(QuickAccessMenuItems);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const {
     toggleGrid,
     showGrid,
@@ -44,6 +42,7 @@ const QuickAcessTools = () => {
     selectedParcel,
     setSelectedParcel,
     clearHighlights,
+    locateParcel,
   } = useMapContext();
   const pathname = usePathname();
 
@@ -52,14 +51,6 @@ const QuickAcessTools = () => {
 
   // Check if we're on the home page
   const isOnHomePage = pathname?.includes('/home');
-
-  // Check if we're on exportable routes
-  const isOnReports = pathname?.includes('/dashboard/rate-payments');
-  const isOnDefaulters = pathname?.includes('/dashboard/defaulters');
-  const isOnHistory = pathname?.includes('/dashboard/history');
-  const canExport = isOnReports || isOnDefaulters || isOnHistory;
-
-  console.log('Export Debug:', { pathname, canExport, isOnReports, isOnDefaulters, isOnHistory });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -112,12 +103,6 @@ const QuickAcessTools = () => {
       return;
     }
 
-    // Handle Export File
-    if (item.name === 'ExportFile' && canExport) {
-      setShowExportMenu(!showExportMenu);
-      return;
-    }
-
     // For non-toggle items, set active index
     setActiveIndex(index);
   };
@@ -144,7 +129,7 @@ const QuickAcessTools = () => {
       {/*Quick Access Items  */}
       {!mounted ? (
         <div className="squircle-3xl dark:bg-panel-bg grid h-fit w-full grid-cols-5 place-items-center gap-3 bg-gray-100 px-3 py-3">
-          {Array.from({ length: 10 }).map((_, i) => (
+          {Array.from({ length: QuickAccessMenuItems.length }).map((_, i) => (
             <div
               key={i}
               className="squircle-md dark:bg-elevated-surface h-[38px] w-[38px] animate-pulse bg-gray-200"
@@ -187,8 +172,6 @@ const QuickAcessTools = () => {
                     item.name === 'BaseMap' && showBaseMap;
                   const isLockViewActive =
                     item.name === 'LockView' && isMapLocked;
-                  const isExportActive =
-                    item.name === 'ExportFile' && showExportMenu;
 
                   return (
                     <QuickAccessItem
@@ -200,12 +183,10 @@ const QuickAcessTools = () => {
                         isInspectorActive ||
                         isBaseMapActive ||
                         isLockViewActive ||
-                        isExportActive ||
                         (activeIndex === index &&
                           item.name !== 'Inspector' &&
                           item.name !== 'BaseMap' &&
-                          item.name !== 'LockView' &&
-                          item.name !== 'ExportFile')
+                          item.name !== 'LockView')
                       }
                       isHovered={hoveredIndex === index}
                       isClicked={clickedIndex === index}
@@ -236,35 +217,23 @@ const QuickAcessTools = () => {
         </div>
       )}
 
-      {/* Notifications - Only visible on home page */}
-      {isOnHomePage && <NotificationsComponent />}
-
-      {/* Parcel Details Card - Shown when parcel is selected in inspector mode */}
-      {(isOnHomePage || isOnParcelsMap) && selectedParcel && showGrid && (
-        <div className="border-border-default mt-2 border-t-[0.5px] pt-2">
+      {(isOnHomePage || isOnParcelsMap) && selectedParcel && (
+        <div className="border-border-default mt-2 border-t-[0.5px] pt-3">
           <ParcelDetailsCard
             parcel={selectedParcel}
             onClose={() => setSelectedParcel(null)}
+            onZoom={locateParcel}
           />
         </div>
       )}
 
-      {/* Export Menu - Only visible on exportable routes */}
-      {canExport && showExportMenu && mounted && (
-        <div
-          className="mt-2"
-          style={{
-            animation: 'blurIn 0.4s ease-out forwards',
-          }}
-        >
-          <ExportMenu 
-            onExport={(period, type) => {
-              toast.success(`Exporting ${period} ${type}...`);
-              setShowExportMenu(false);
-            }}
-          />
-        </div>
+      {mounted && !((isOnHomePage || isOnParcelsMap) && selectedParcel) && (
+        <QuickAccessPlaceholder pathname={pathname} />
       )}
+
+
+      {/* Parcel Details Card - Shown when parcel is selected in inspector mode */}
+
     </div>
   );
 };
@@ -358,40 +327,6 @@ const QuickAccessItem = ({
           {item.name}
         </div>
       )}
-    </div>
-  );
-};
-
-interface ExportMenuProps {
-  onExport: (period: string, type: string) => void;
-}
-
-const ExportMenu = ({ onExport }: ExportMenuProps) => {
-  const periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
-  const types = ['Data', 'Graph'];
-
-  return (
-    <div className="squircle-2xl dark:bg-panel-bg bg-gray-100 p-3 space-y-3">
-      <div className="px-1">
-        <p className="text-regular-md">Export Options</p>
-      </div>
-      
-      {types.map((type) => (
-        <div key={type} className="space-y-2">
-          <p className="text-body-xs text-neutral-500 px-1">{type}</p>
-          <div className="grid grid-cols-2 gap-2">
-            {periods.map((period) => (
-              <button
-                key={`${type}-${period}`}
-                onClick={() => onExport(period, type)}
-                className="squircle-md dark:bg-elevated-surface dark:border-border-default dark:hover:bg-hover-surface bg-gray-50 border-[0.5px] border-gray-200 px-3 py-2 text-sm transition-colors hover:bg-gray-100"
-              >
-                {period}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 // Database initialization with IndexedDB (browser-native, no Node.js dependencies)
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { createTables, SCHEMA_VERSION, Parcel } from './schema';
+import { SCHEMA_VERSION, Parcel } from './schema';
 
 interface ERatesDB extends DBSchema {
   parcels: {

@@ -151,9 +151,23 @@ export const authService = {
     return decoded?.user_id || null;
   },
 
+  getCounty(): string | null {
+    const token = this.getAccessToken();
+    return token ? (this.decodeToken(token)?.county as string) || null : null;
+  },
+
+  mustChangePassword(): boolean {
+    const token = this.getAccessToken();
+    return token ? !!this.decodeToken(token)?.must_change_password : false;
+  },
+
+  isPlatformOwner(): boolean {
+    return this.getUserRole() === 'owner';
+  },
+
   isAdmin(): boolean {
     const role = this.getUserRole();
-    return role === 'admin';
+    return role === 'admin' || role === 'owner';
   },
 
   isTokenExpired(token: string): boolean {
@@ -193,6 +207,20 @@ export const authService = {
     this.clearTokens();
   },
 };
+
+export function loginPathForCurrentSession(): string {
+  return authService.isAdmin() || authService.getUserRole() === 'auditor'
+    ? '/admin-login'
+    : '/account';
+}
+
+export function endSession(): void {
+  const destination = loginPathForCurrentSession(); // role must be read before the token is cleared
+  authService.clearTokens();
+  if (typeof window !== 'undefined') {
+    window.location.href = destination;
+  }
+}
 
 export const createAuthAxiosInstance = () => {
   const instance = axios.create({
@@ -246,17 +274,11 @@ export const createAuthAxiosInstance = () => {
             return instance(originalRequest);
           } else {
             console.log('Token refresh failed - no new token');
-            authService.clearTokens();
-            if (typeof window !== 'undefined') {
-              window.location.href = '/account';
-            }
+            endSession();
           }
         } catch (refreshError) {
           console.error('Token refresh error:', refreshError);
-          authService.clearTokens();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/account';
-          }
+          endSession();
           return Promise.reject(refreshError);
         }
       }

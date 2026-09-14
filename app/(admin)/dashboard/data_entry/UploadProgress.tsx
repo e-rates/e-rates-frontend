@@ -18,27 +18,23 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
   disabled = false,
 }) => {
   return (
-    <div className="w-[600px] space-y-3">
+    <div className="flex flex-col items-end gap-2 shrink-0">
       {isUploading && (
-        <div className="w-full">
-          <div className="mb-2 flex justify-between">
-            <span className="text-regular-sm text-text-tertiary">
-              Uploading...
-            </span>
-            <span className="text-regular-sm text-text-tertiary">
-              {progress}%
-            </span>
+        <div className="w-48">
+          <div className="mb-1 flex justify-between text-[11px] text-text-tertiary">
+            <span>Uploading...</span>
+            <span>{progress}%</span>
           </div>
-          <div className="squircle-full bg-surface-secondary h-2 w-full">
+          <div className="rounded-none bg-surface-secondary h-1.5 w-full">
             <div
-              className="squircle-full h-2 bg-blue-500 transition-all duration-300"
+              className="rounded-none h-1.5 bg-primary transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
       )}
       <Button
-        className="w-full text-white"
+        className="min-w-[110px] text-white rounded-none cursor-pointer whitespace-nowrap"
         onClick={onUpload}
         disabled={disabled || isUploading}
       >

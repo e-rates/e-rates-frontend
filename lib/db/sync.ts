@@ -1,8 +1,21 @@
 // Sync service for managing data synchronization between backend and local DB
 import { getDB, getMetadata, setMetadata, initDB } from './init';
-import { Parcel, Payment } from './schema';
 import { normalizeParcelFromBackend, BackendGeoJSON } from './normalize';
 import api, { getAuthToken } from '../api';
+import { backendJson } from '../backend';
+import type { Paginated } from '../payments';
+
+/** What the API returns for a payment, as opposed to the local IndexedDB row. */
+interface BackendPayment {
+  payment_id: string;
+  parcel_ref?: string | null;
+  parcel_refs?: string[] | null;
+  amount: string | number;
+  status: string;
+  processor_ref?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface SyncStatus {
   isSyncing: boolean;
@@ -138,22 +151,23 @@ class SyncService {
     }
 
     try {
-      const response = (await api.get('/api/admin/payments', token)) as any;
-      const payments = response.data || [];
+      const page = await backendJson<Paginated<BackendPayment>>(
+        '/api/payments/?ordering=-created_at'
+      );
 
       const db = await getDB();
       const tx = db.transaction('payments', 'readwrite');
 
-      for (const payment of payments) {
+      for (const payment of page.results) {
         await tx.store.put({
-          id: payment.id,
-          parcel_id: payment.parcel_id,
-          amount: payment.amount,
-          payment_date: new Date(payment.payment_date).getTime(),
-          payment_method: payment.payment_method,
-          receipt_number: payment.receipt_number,
+          id: payment.payment_id,
+          parcel_id: payment.parcel_ref ?? payment.parcel_refs?.[0] ?? '',
+          amount: Number(payment.amount),
+          payment_date: new Date(payment.status === 'completed' ? payment.updated_at : payment.created_at).getTime(),
+          payment_method: 'online',
+          receipt_number: payment.processor_ref ?? payment.payment_id,
           created_at: Date.now(),
-        });
+        } as any);
       }
 
       await tx.done;

@@ -1,7 +1,7 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { authService } from '@/lib/auth';
 import { DefaultersFilters, DefaultersResponse } from './types';
 
-const BACKEND_URL = 'http://5.189.150.44';
 
 /**
  * Build query string from filters object

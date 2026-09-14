@@ -1,8 +1,13 @@
 import type { NextConfig } from 'next';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+// Never fall back to production: a missing env var must land on localhost, not a live county.
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
 
 const nextConfig: NextConfig = {
+  // Emits .next/standalone so the runtime image ships only what it needs.
+  output: 'standalone',
+
   // @ts-ignore - allowedDevOrigins is available in Next.js 16 but not in types yet
   allowedDevOrigins: ['172.29.114.0:3000'],
 
@@ -26,6 +31,14 @@ const nextConfig: NextConfig = {
       // Optimize large dependencies
       canvas: './empty-module.js',
     },
+  },
+
+  images: {
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'http', hostname: '127.0.0.1' },
+      { protocol: 'https', hostname: '**' },
+    ],
   },
 
   async headers() {
@@ -58,15 +71,19 @@ const nextConfig: NextConfig = {
       // Next.js API routes take precedence over rewrites
       {
         source: '/api/token/:path*',
-        destination: 'http://5.189.150.44/api/token/:path*',
+        destination: `${BACKEND_URL}/api/token/:path*`,
       },
       {
         source: '/api/users/:path*',
-        destination: 'http://5.189.150.44/api/users/:path*',
+        destination: `${BACKEND_URL}/api/users/:path*`,
       },
       {
         source: '/api/admin/:path*',
-        destination: 'http://5.189.150.44/api/admin/:path*',
+        destination: `${BACKEND_URL}/api/admin/:path*`,
+      },
+      {
+        source: '/media/:path*',
+        destination: `${BACKEND_URL}/media/:path*`,
       },
     ];
   },

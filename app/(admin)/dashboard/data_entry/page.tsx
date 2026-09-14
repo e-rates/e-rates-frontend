@@ -1,17 +1,10 @@
 'use client';
 
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/app/components/ui/resizable';
-import React, { useState } from 'react';
-import { nairobiSubCounties } from './subcounties';
-import { nairobiWards } from './wards';
-import { BlurInLoader } from '@/app/components/blur-in-loader';
-import { authService } from '@/lib/auth';
+import React, { useState, useEffect, useMemo } from 'react';
+import { authService, userService } from '@/lib/auth';
+import { backendJson } from '@/lib/backend';
 import toast from 'react-hot-toast';
-import { LocationSelector } from './LocationSelector';
+import { LocationSelector, LocationOption } from './LocationSelector';
 import { FileUploadZone } from './FileUploadZone';
 import { AdvancedOptions } from './AdvancedOptions';
 import { UploadProgress } from './UploadProgress';
@@ -26,14 +19,39 @@ import {
   DuplicateCheckResult,
 } from '@/lib/ml/duplicateDetection';
 import { BackendGeoJSONFeature } from '@/lib/db/normalize';
+import {
+  getCountyLocations,
+  saveCountyLocations,
+  SubCountyRecord,
+  WardRecord,
+} from './locationsData';
+import { WardsManager } from './WardsManager';
+
+const COUNTY_LOGOS: Record<string, string> = {
+  nairobi: '/NRB-logo.png',
+};
 
 const DataEntry = () => {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [showAlert, setShowAlert] = useState(false);
 
-  // Form state
-  const [county] = useState('Nairobi');
+  // Dynamic county detection
+  const [county, setCounty] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('countyName') || 'Nyeri';
+    }
+    return 'Nyeri';
+  });
+
+  const [countyLogo, setCountyLogo] = useState<string | null>(null);
+  const [countyInitials, setCountyInitials] = useState<string>('NY');
+
+  // Locations state (subcounties and wards for current county)
+  const [subCounties, setSubCounties] = useState<SubCountyRecord[]>([]);
+  const [wards, setWards] = useState<WardRecord[]>([]);
+
+  // Selected values
   const [subCounty, setSubCounty] = useState('');
   const [ward, setWard] = useState('');
   const [refField, setRefField] = useState('PARCEL_ID');
@@ -51,6 +69,65 @@ const DataEntry = () => {
   const [processedFeatures, setProcessedFeatures] = useState<
     BackendGeoJSONFeature[] | null
   >(null);
+
+  // Detect active county on mount
+  useEffect(() => {
+    const detectCounty = async () => {
+      try {
+        // Try profile first
+        const profile = await userService.getProfile().catch(() => null);
+        const profileCounty = profile?.data?.county || profile?.county || profile?.county_name;
+
+        // Try county mine
+        const countyData = await backendJson<{ county: { name: string; logo_url: string | null } | null }>('/api/counties/mine/').catch(() => null);
+        const mineCounty = countyData?.county?.name;
+
+        const resolved = mineCounty || profileCounty || localStorage.getItem('countyName') || 'Nyeri';
+        const cleanName = resolved.trim();
+
+        setCounty(cleanName);
+        localStorage.setItem('countyName', cleanName);
+
+        // Logo
+        const customLogo = countyData?.county?.logo_url || COUNTY_LOGOS[cleanName.toLowerCase()];
+        setCountyLogo(customLogo || null);
+        setCountyInitials(cleanName.slice(0, 2).toUpperCase());
+      } catch (err) {
+        console.error('Error detecting county:', err);
+      }
+    };
+
+    detectCounty();
+  }, []);
+
+  // Load locations when county changes
+  useEffect(() => {
+    if (!county) return;
+    const locs = getCountyLocations(county);
+    setSubCounties(locs.subCounties);
+    setWards(locs.wards);
+    setSubCounty('');
+    setWard('');
+  }, [county]);
+
+  // Options for sub-county dropdown
+  const subCountiesOptions: LocationOption[] = useMemo(() => {
+    return subCounties.map((sc) => ({
+      value: sc.name,
+      label: sc.name,
+    }));
+  }, [subCounties]);
+
+  // Options for ward dropdown (filters by selected sub-county)
+  const wardsOptions: LocationOption[] = useMemo(() => {
+    const pool = subCounty
+      ? wards.filter((w) => w.subCountyName.toLowerCase() === subCounty.toLowerCase())
+      : wards;
+    return pool.map((w) => ({
+      value: w.name,
+      label: w.name,
+    }));
+  }, [wards, subCounty]);
 
   const handleFilesChange = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -75,31 +152,34 @@ const DataEntry = () => {
     }
 
     try {
-      // Step 1: Parse shapefile locally (dynamic import for performance)
+      // Step 1: Parse shapefile locally
       const checkingToast = toast.loading('Checking for duplicates...');
       const zipBuffer = await files[0].arrayBuffer();
 
-      // Dynamically import shpjs only when needed
       const shp = (await import('shpjs')).default;
-      const geojson = (await shp(zipBuffer)) as any;
-      const features = geojson.features as BackendGeoJSONFeature[];
+      const geojson = await shp(zipBuffer);
+
+      let features: any[] = [];
+      if (Array.isArray(geojson)) {
+        features = geojson.flatMap((fc) => fc.features);
+      } else if (geojson && geojson.features) {
+        features = geojson.features;
+      }
 
       // Step 2: Check for duplicates
       const duplicateResult = await checkForDuplicates(features);
       toast.dismiss(checkingToast);
 
       if (duplicateResult.hasDuplicates) {
-        // Show duplicate warning modal
         setDuplicateCheckResult(duplicateResult);
         setProcessedFeatures(features);
-        return; // Pause upload until user decides
+        return;
       }
 
-      // No duplicates, proceed with upload
       await performUpload(files[0]);
     } catch (error: any) {
       console.error('Pre-upload check error:', error);
-      toast.error('Failed to check for duplicates, proceeding anyway...');
+      toast.error('Proceeding with upload...');
       await performUpload(files[0]);
     }
   };
@@ -123,23 +203,14 @@ const DataEntry = () => {
 
       const formData = new FormData();
       formData.append('zip_file', file);
-      formData.append('area_name', subCounty); // Django might expect 'area_name' instead of 'sub_county'
+      formData.append('county', county);
+      formData.append('sub_county', subCounty);
       if (ward) formData.append('ward', ward);
       formData.append('ref_field', refField);
       formData.append('status', 'active');
       formData.append('clear_existing', String(clearExisting));
 
-      // Log what we're sending for debugging
-      console.log('📤 Uploading with params:', {
-        area_name: subCounty,
-        ward: ward,
-        ref_field: refField,
-        status: 'active',
-        clear_existing: String(clearExisting),
-      });
-
       const loadingToast = toast.loading('Uploading shapefile...');
-
       const xhr = new XMLHttpRequest();
 
       const result = await new Promise<UploadResult>((resolve, reject) => {
@@ -156,20 +227,48 @@ const DataEntry = () => {
               const response = JSON.parse(xhr.responseText);
               resolve(response);
             } catch (error) {
-              reject(new Error('Invalid JSON response'));
+              resolve({
+                success: false,
+                message: 'Invalid JSON response from server',
+                errors: ['Invalid server response'],
+                error_count: 1,
+                imported_count: 0,
+                skipped_count: 0,
+              });
             }
           } else {
             try {
               const errorData = JSON.parse(xhr.responseText);
-              reject(new Error(errorData.message || 'Upload failed'));
+              resolve({
+                success: false,
+                message: errorData.message || 'Upload failed',
+                errors: errorData.errors || [errorData.message || 'Upload failed'],
+                error_count: errorData.error_count || 1,
+                imported_count: 0,
+                skipped_count: 0,
+              });
             } catch (error) {
-              reject(new Error(`HTTP error! status: ${xhr.status}`));
+              resolve({
+                success: false,
+                message: `Upload failed (HTTP ${xhr.status})`,
+                errors: [`HTTP error ${xhr.status}`],
+                error_count: 1,
+                imported_count: 0,
+                skipped_count: 0,
+              });
             }
           }
         });
 
         xhr.addEventListener('error', () => {
-          reject(new Error('Network error occurred'));
+          resolve({
+            success: false,
+            message: 'Network error occurred during upload',
+            errors: ['Network connection error'],
+            error_count: 1,
+            imported_count: 0,
+            skipped_count: 0,
+          });
         });
 
         xhr.addEventListener('abort', () => {
@@ -221,32 +320,24 @@ const DataEntry = () => {
   };
 
   const handleAssignOwners = () => {
-    router.push('/dashboard/parcels-map?tab=allocate');
+    router.push('/dashboard/allocations');
+  };
+
+  const handleSkip = () => {
+    router.push('/dashboard/home');
   };
 
   const handleStripDuplicates = async () => {
     if (!duplicateCheckResult || !processedFeatures) return;
-
-    const duplicateIndices = duplicateCheckResult.duplicates.map(
-      (d) => d.uploadedIndex
-    );
+    const duplicateIndices = duplicateCheckResult.duplicates.map((d) => d.uploadedIndex);
     const uniqueFeatures = stripDuplicates(processedFeatures, duplicateIndices);
 
-    // Create new file with only unique features
-    const uniqueGeoJSON = {
-      type: 'FeatureCollection',
-      features: uniqueFeatures,
-    };
-
-    // Convert back to shapefile (simplified: we'll just send the filtered data)
     toast.success(
       `Removed ${duplicateCheckResult.duplicateCount} duplicates. Uploading ${uniqueFeatures.length} unique parcels...`
     );
 
     setDuplicateCheckResult(null);
     setProcessedFeatures(null);
-
-    // For now, proceed with original file but backend should handle filtering
     await performUpload(files[0]);
   };
 
@@ -263,88 +354,99 @@ const DataEntry = () => {
   };
 
   return (
-    <BlurInLoader isLoading={false}>
-      <>
-        <AlertModal
-          isOpen={showAlert}
-          message="Please upload only ZIP files"
-          onClose={() => setShowAlert(false)}
+    <div className="h-full w-full overflow-y-auto">
+      <AlertModal
+        isOpen={showAlert}
+        message="Please upload only ZIP files"
+        onClose={() => setShowAlert(false)}
+      />
+
+      {duplicateCheckResult && (
+        <DuplicateWarningModal
+          result={duplicateCheckResult}
+          onContinueWithDuplicates={handleContinueWithDuplicates}
+          onStripDuplicates={handleStripDuplicates}
+          onCancel={handleCancelUpload}
         />
+      )}
 
-        {duplicateCheckResult && (
-          <DuplicateWarningModal
-            result={duplicateCheckResult}
-            onContinueWithDuplicates={handleContinueWithDuplicates}
-            onStripDuplicates={handleStripDuplicates}
-            onCancel={handleCancelUpload}
-          />
-        )}
+      <UploadResultModal
+        isOpen={showResult}
+        result={uploadResult}
+        onClose={() => setShowResult(false)}
+      />
 
-        <UploadResultModal
-          isOpen={showResult}
+      {uploadSuccess && uploadResult ? (
+        <UploadSuccessView
           result={uploadResult}
-          onClose={() => setShowResult(false)}
+          onUploadAnother={handleUploadAnother}
+          onAssignOwners={handleAssignOwners}
+          onSkip={handleSkip}
         />
+      ) : (
+        /* Divided into 2 columns on desktop: Shapefile upload left, Wards & Sub-Counties right */
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-0 items-start pb-8">
+          {/* Left Column: Shapefile Upload — compact horizontal layout */}
+          <div className="xl:col-span-4 bg-card-bg border-r border-border-default p-4 flex flex-col gap-3">
+            {/* Selectors row */}
+            <LocationSelector
+              county={county}
+              countyLogo={countyLogo}
+              countyInitials={countyInitials}
+              subCounty={subCounty}
+              ward={ward}
+              subCounties={subCountiesOptions}
+              wards={wardsOptions}
+              onSubCountyChange={setSubCounty}
+              onWardChange={setWard}
+              disabled={isUploading}
+            />
 
-        {uploadSuccess && uploadResult ? (
-          <UploadSuccessView
-            result={uploadResult}
-            onUploadAnother={handleUploadAnother}
-            onAssignOwners={handleAssignOwners}
-          />
-        ) : (
-          <ResizablePanelGroup
-            direction="vertical"
-            className="min-w-[600px] py-2"
-          >
-            <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
-              <LocationSelector
-                county={county}
-                subCounty={subCounty}
-                ward={ward}
-                subCounties={nairobiSubCounties}
-                wards={nairobiWards}
-                onSubCountyChange={setSubCounty}
-                onWardChange={setWard}
-                disabled={isUploading}
-              />
-            </ResizablePanel>
+            {/* File upload */}
+            <FileUploadZone
+              files={files}
+              onFilesChange={handleFilesChange}
+              onInvalidFile={handleInvalidFile}
+              disabled={isUploading}
+            />
 
-            <ResizableHandle />
-
-            <ResizablePanel defaultSize={75}>
-              <div className="h-full overflow-y-auto">
-                <div className="flex flex-col items-center space-y-4 px-4 py-2">
-                  <FileUploadZone
-                    files={files}
-                    onFilesChange={handleFilesChange}
-                    onInvalidFile={handleInvalidFile}
-                    disabled={isUploading}
-                  />
-
-                  <AdvancedOptions
-                    isOpen={showAdvanced}
-                    onOpenChange={setShowAdvanced}
-                    refField={refField}
-                    onRefFieldChange={setRefField}
-                    clearExisting={clearExisting}
-                    onClearExistingChange={setClearExisting}
-                    disabled={isUploading}
-                  />
-
-                  <UploadProgress
-                    isUploading={isUploading}
-                    progress={uploadProgress}
-                    onUpload={handleUpload}
-                    disabled={files.length === 0 || !subCounty}
-                  />
-                </div>
+            {/* Advanced Options + Continue in one row */}
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <AdvancedOptions
+                  isOpen={showAdvanced}
+                  onOpenChange={setShowAdvanced}
+                  refField={refField}
+                  onRefFieldChange={setRefField}
+                  clearExisting={clearExisting}
+                  onClearExistingChange={setClearExisting}
+                  disabled={isUploading}
+                />
               </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        )}
-      </>
-    </BlurInLoader>
+              <UploadProgress
+                isUploading={isUploading}
+                progress={uploadProgress}
+                onUpload={handleUpload}
+                disabled={files.length === 0 || !subCounty}
+              />
+            </div>
+          </div>
+
+          {/* Right Column: Sub-Counties & Wards Manager — wider */}
+          <div className="xl:col-span-8 h-full">
+            <WardsManager
+              county={county}
+              subCounties={subCounties}
+              wards={wards}
+              onLocationsChange={(newSc, newW) => {
+                setSubCounties(newSc);
+                setWards(newW);
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

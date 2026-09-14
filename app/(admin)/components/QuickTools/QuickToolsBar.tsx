@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import React, { useState, useEffect } from 'react';
 import {
   QuickToolsItems,
@@ -79,7 +80,7 @@ const QuickToolsBar = () => {
           const token = await authService.getValidAccessToken();
           if (!token) return;
           const response = await axios.get(
-            `http://5.189.150.44/api/parcels/geojson/?search=${encodeURIComponent(searchValue)}`,
+            `${BACKEND_URL}/api/parcels/geojson/?search=${encodeURIComponent(searchValue)}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -127,11 +128,7 @@ const QuickToolsBar = () => {
         clearHighlights();
         toast.success('Highlights cleared');
         break;
-      case 'share':
-        // Handle share action
-        break;
       case 'print':
-        // Handle print action
         window.print();
         break;
     }
@@ -210,7 +207,6 @@ const QuickToolsBar = () => {
     <div
       className="flex h-full w-full items-center gap-3 px-4"
       style={{
-        animation: 'blurIn 0.4s ease-out forwards',
         position: 'relative',
         zIndex: 100000,
       }}
@@ -297,19 +293,6 @@ const QuickToolsBar = () => {
           </SortableContext>
         </div>
       </DndContext>
-
-      <style jsx>{`
-        @keyframes blurIn {
-          from {
-            filter: blur(10px);
-            opacity: 0;
-          }
-          to {
-            filter: blur(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   );
 };

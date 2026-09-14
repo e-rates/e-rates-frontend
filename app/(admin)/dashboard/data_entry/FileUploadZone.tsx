@@ -58,15 +58,15 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
   };
 
   return (
-    <div className="w-[600px]">
-      <h1 className="text-text-tertiary text-[18px] tracking-tight">
+    <div className="w-full">
+      <h1 className="text-text-tertiary text-[18px] tracking-tight font-medium">
         Parcel Zip upload
       </h1>
       <p className="text-regular-sm text-text-tertiary tracking-normal">
         Only Zip formats are accepted{' '}
         <span className="font-bold text-rose-500">(confirm before upload)</span>
       </p>
-      <div className="squircle-lg border-border-default mt-4 flex w-full flex-col items-start border-[0.5px] border-dashed px-2 py-2">
+      <div className="rounded-none border-border-default mt-4 flex w-full flex-col items-start border-[0.5px] border-dashed px-2 py-4">
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -88,7 +88,7 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
                   disabled={disabled}
                 />
                 <Button
-                  className="bg-elevated-surface"
+                  className="bg-elevated-surface rounded-none border border-border-default hover:bg-surface-secondary cursor-pointer"
                   onClick={() =>
                     document.getElementById('file-upload')?.click()
                   }
@@ -108,7 +108,7 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
                     File Selected
                   </h1>
                 </div>
-                <div className="squircle-lg bg-surface-secondary flex w-full items-center justify-between px-4 py-3">
+                <div className="rounded-none bg-surface-secondary border border-border-default flex w-full items-center justify-between px-4 py-3">
                   <p className="text-regular-md text-text-primary font-medium">
                     {files[0].name}
                   </p>
@@ -117,7 +117,7 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
                     size="sm"
                     onClick={handleRemoveFile}
                     disabled={disabled}
-                    className="hover:bg-rose-500/10 hover:text-rose-500"
+                    className="rounded-none hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </Button>

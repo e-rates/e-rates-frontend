@@ -1,196 +1,140 @@
 'use client';
 
 import React from 'react';
-import { BlurInLoader } from '@/app/components/blur-in-loader';
-import {
-  Settings as SettingsIcon,
-  Globe,
-  Bell,
-  Shield,
-  Database,
-  Palette,
-} from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { ThemeToggle } from '@/app/components/theme-toggle';
-import AdminProfile from '../../components/AdminProfile';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { BUTTON, ControlRow, Row, SELECT, Section, ToggleRow } from '../../components/forms/Section';
+import { usePreferences } from '../../components/usePreferences';
+
+const TIMEOUTS = [
+  { value: 15, label: '15 minutes' },
+  { value: 30, label: '30 minutes' },
+  { value: 60, label: '1 hour' },
+  { value: 0, label: 'Never' },
+];
+
+const CACHE_KEYS = ['mapState', 'countyName'];
 
 export default function SettingsPage() {
+  const { preferences, update, reset, loaded } = usePreferences();
+
+  const enableBrowserNotifications = async (next: boolean) => {
+    if (!next) {
+      update({ browserNotifications: false });
+      return;
+    }
+    if (typeof Notification === 'undefined') {
+      toast.error('This browser cannot show desktop notifications.');
+      return;
+    }
+    const permission =
+      Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (permission !== 'granted') {
+      toast.error('Chrome blocked notifications for this site. Allow them in site settings.');
+      return;
+    }
+    update({ browserNotifications: true });
+    toast.success('Desktop alerts on for confirmed payments.');
+  };
+
+  const clearCache = () => {
+    try {
+      CACHE_KEYS.forEach((key) => localStorage.removeItem(key));
+      toast.success('Cached map data cleared. It reloads on the next map view.');
+    } catch {
+      toast.error('This browser is blocking local storage.');
+    }
+  };
+
   return (
-    <BlurInLoader isLoading={false}>
-      <div className="w-full p-6">
-        <div className="mx-auto max-w-4xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-text-primary mb-2 text-3xl font-bold">
-              System Settings
-            </h1>
-            <p className="text-text-secondary text-sm">
-              Configure your application preferences
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            {/* Appearance */}
-            <div className="squircle-lg bg-card-bg border-border-default border p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <Palette className="text-primary h-5 w-5" />
-                <h2 className="text-text-primary text-lg font-semibold">
-                  Appearance
-                </h2>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-text-primary text-sm font-medium">Theme</p>
-                  <p className="text-text-secondary text-xs">
-                    Choose your preferred color scheme
-                  </p>
-                </div>
-                <ThemeToggle />
-              </div>
-            </div>
-
-            {/* Notifications */}
-            <div className="squircle-lg bg-card-bg border-border-default border p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <Bell className="text-primary h-5 w-5" />
-                <h2 className="text-text-primary text-lg font-semibold">
-                  Notifications
-                </h2>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-text-primary text-sm font-medium">
-                      Email Notifications
-                    </p>
-                    <p className="text-text-secondary text-xs">
-                      Receive updates via email
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded"
-                    defaultChecked
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-text-primary text-sm font-medium">
-                      Push Notifications
-                    </p>
-                    <p className="text-text-secondary text-xs">
-                      Get browser notifications
-                    </p>
-                  </div>
-                  <input type="checkbox" className="h-5 w-5 rounded" />
-                </div>
-              </div>
-            </div>
-
-            {/* Regional Settings */}
-            <div className="squircle-lg bg-card-bg border-border-default border p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <Globe className="text-primary h-5 w-5" />
-                <h2 className="text-text-primary text-lg font-semibold">
-                  Regional Settings
-                </h2>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-text-primary mb-1 text-sm font-medium">
-                      Currency
-                    </p>
-                    <select className="bg-white dark:bg-neutral-800/30 border-border-default text-text-primary focus:border-primary w-full rounded-lg border px-4 py-2 text-sm focus:outline-none">
-                      <option>USD ($)</option>
-                      <option>ZWL (Z$)</option>
-                      <option>ZAR (R)</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-text-primary mb-1 text-sm font-medium">
-                      Time Zone
-                    </p>
-                    <select className="bg-white dark:bg-neutral-800/30 border-border-default text-text-primary focus:border-primary w-full rounded-lg border px-4 py-2 text-sm focus:outline-none">
-                      <option>Africa/Harare (GMT+2)</option>
-                      <option>UTC</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Privacy & Security */}
-            <div className="bg-card-bg border-border-default rounded-lg border p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <Shield className="text-primary h-5 w-5" />
-                <h2 className="text-text-primary text-lg font-semibold">
-                  Privacy & Security
-                </h2>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-text-primary text-sm font-medium">
-                      Activity Logging
-                    </p>
-                    <p className="text-text-secondary text-xs">
-                      Track all system activities
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded"
-                    defaultChecked
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-text-primary text-sm font-medium">
-                      Session Timeout
-                    </p>
-                    <p className="text-text-secondary text-xs">
-                      Auto-logout after inactivity
-                    </p>
-                  </div>
-                  <select className="bg-white dark:bg-neutral-800/30 border-border-default text-text-primary focus:border-primary rounded-lg border px-4 py-2 text-sm focus:outline-none">
-                    <option>15 minutes</option>
-                    <option>30 minutes</option>
-                    <option>1 hour</option>
-                    <option>Never</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Data Management */}
-            <div className="bg-card-bg border-border-default rounded-lg border p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <Database className="text-primary h-5 w-5" />
-                <h2 className="text-text-primary text-lg font-semibold">
-                  Data Management
-                </h2>
-              </div>
-              <div className="space-y-3">
-                <Button variant="outline" className="w-full">
-                  Export All Data
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Clear Cache
-                </Button>
-              </div>
-            </div>
-
-            {/* Save Changes */}
-            <div className="flex justify-end gap-3">
-              <Button variant="outline">Reset to Defaults</Button>
-              <Button>Save Changes</Button>
-            </div>
-          </div>
-        </div>
+    <div className="h-full w-full overflow-x-hidden overflow-y-auto px-6 pb-10">
+      <div className="border-border-default border-b-[0.5px] py-6">
+        <h1 className="text-text-primary text-2xl font-semibold">Settings</h1>
+        <p className="text-text-tertiary mt-1 text-sm">
+          Preferences for this browser. They are not shared with other rates officers.
+        </p>
       </div>
-    </BlurInLoader>
+
+      <Section title="Account" description="Your username, contact details and password.">
+        <ControlRow label="Your profile" hint="Email, phone number and password are managed on the Account page.">
+          <Link href="/dashboard/account" className={`${BUTTON} flex items-center`}>
+            Open account
+          </Link>
+        </ControlRow>
+      </Section>
+
+      <Section title="Regional" description="How amounts and times are shown across the dashboard.">
+        <dl>
+          <Row label="Currency" value="Kenyan shilling (KES)" />
+          <Row label="Time zone" value="Africa/Nairobi (EAT, GMT+3)" />
+          <Row label="Rating year" value="Calendar year, per the county rates gazette" />
+        </dl>
+        <p className="text-text-tertiary mt-3 text-xs">
+          Fixed for Kenyan land rates. Payment timestamps and deadlines use this zone.
+        </p>
+      </Section>
+
+      <Section title="Security" description="How long a session lasts before it signs you out.">
+        <ControlRow label="Session timeout" hint="Sign out automatically after this much inactivity.">
+          <select
+            aria-label="Session timeout"
+            value={preferences.sessionTimeoutMinutes}
+            disabled={!loaded}
+            onChange={(e) => update({ sessionTimeoutMinutes: Number(e.target.value) })}
+            className={SELECT}
+          >
+            {TIMEOUTS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </ControlRow>
+        <ControlRow
+          label="Activity logging"
+          hint="Always on. Every action is recorded for rates compliance and cannot be disabled."
+        >
+          <Link href="/dashboard/audit" className={`${BUTTON} flex items-center`}>
+            View Audit Log
+          </Link>
+        </ControlRow>
+      </Section>
+
+      <Section title="Notifications" description="Desktop alerts when a payment is confirmed.">
+        <ToggleRow
+          label="Browser notifications"
+          hint="Show a desktop alert when an M-Pesa payment clears."
+          checked={preferences.browserNotifications}
+          disabled={!loaded}
+          onChange={enableBrowserNotifications}
+        />
+      </Section>
+
+      <Section title="Data" description="Reports and locally cached map data.">
+        <ControlRow label="Rates reports" hint="Collections, arrears and the valuation register, as PDF or Excel.">
+          <Link href="/dashboard/reports" className={`${BUTTON} flex items-center`}>
+            Go to Reports
+          </Link>
+        </ControlRow>
+        <ControlRow label="Cached map data" hint="Clears the saved map position so parcels reload fresh.">
+          <button onClick={clearCache} className={BUTTON}>
+            Clear cache
+          </button>
+        </ControlRow>
+      </Section>
+
+      <div className="flex items-center justify-between gap-8 py-6">
+        <p className="text-text-tertiary text-xs">Changes above save as you make them.</p>
+        <button
+          onClick={() => {
+            reset();
+            toast.success('Preferences reset to defaults.');
+          }}
+          className={BUTTON}
+        >
+          Reset to defaults
+        </button>
+      </div>
+    </div>
   );
 }

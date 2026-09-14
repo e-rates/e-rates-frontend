@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, MapPin, ChevronDown } from 'lucide-react';
+import { MapPin, ChevronDown } from 'lucide-react';
 import { useMapContext } from '../../context/MapContext';
 import { useSpring, animated } from '@react-spring/web';
 import toast from 'react-hot-toast';

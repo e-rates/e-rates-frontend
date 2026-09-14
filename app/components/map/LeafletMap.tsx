@@ -1,175 +1,136 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+import 'leaflet/dist/leaflet.css';
+import React, { useEffect, useMemo, useRef } from 'react';
+import L from 'leaflet';
+import { GeoJSON, LayersControl, MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { RateParcelCollection, RateParcelFeature, RateStatus, rateStatusMeta } from '@/lib/rates';
 
-// Dynamically import Leaflet to avoid SSR issues
-const MapContainer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.TileLayer),
-  { ssr: false }
-);
-const GeoJSON = dynamic(
-  () => import('react-leaflet').then((mod) => mod.GeoJSON),
-  { ssr: false }
-);
-
-interface ParcelGeometry {
-  type: 'Polygon';
-  coordinates: number[][][];
-}
-
-interface ParcelProperties {
-  parcel_ref: string;
-  area_m2: number;
-  [key: string]: any;
-}
-
-interface ParcelFeature {
-  id: string;
-  type: 'Feature';
-  geometry: ParcelGeometry;
-  properties: ParcelProperties;
-}
-
-interface ParcelGeoJSON {
-  type: 'FeatureCollection';
-  features: ParcelFeature[];
-}
+const NAIROBI: L.LatLngTuple = [-1.2921, 36.8219];
 
 interface LeafletMapProps {
-  parcelData?: ParcelGeoJSON | null;
+  parcelData?: RateParcelCollection | null;
   isLoading?: boolean;
-  error?: Error | null;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+  visible?: boolean;
 }
 
-const LeafletMap: React.FC<LeafletMapProps> = ({
-  parcelData,
-  isLoading = false,
-  error = null,
-}) => {
-  const [isClient, setIsClient] = useState(false);
+function boundsOf(target: unknown): L.LatLngBounds | null {
+  const bounds = L.geoJSON(target as never).getBounds();
+  return bounds.isValid() ? bounds : null;
+}
+
+function FitToParcels({
+  data,
+  selectedId,
+  visible,
+}: {
+  data?: RateParcelCollection | null;
+  selectedId?: string | null;
+  visible: boolean;
+}) {
+  const map = useMap();
+  const parcelKey = data?.features.map((f) => f.id).join(',') ?? '';
+  const lastSelected = useRef(selectedId);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    if (visible) map.invalidateSize({ animate: false });
+  }, [map, visible]);
 
-  // Log parcel data for debugging
   useEffect(() => {
-    console.log('🗺️ LeafletMap render:', {
-      hasParcelData: !!parcelData,
-      parcelCount: parcelData?.features?.length,
-      isLoading,
-      error: error?.message,
-    });
-  }, [parcelData, isLoading, error]);
+    const target = data?.features.find((f) => f.id === selectedId) ?? (data?.features.length ? data : null);
+    const bounds = target && boundsOf(target);
+    if (bounds) map.fitBounds(bounds, { padding: [32, 32], maxZoom: 18, animate: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, parcelKey]);
 
-  // Calculate bounds and center from parcel data
-  const { center, zoom } = useMemo(() => {
-    if (!parcelData?.features?.length) {
-      console.log('⚠️ No parcel data, using default Nairobi center');
-      return {
-        center: [-1.2921, 36.8219] as [number, number],
-        zoom: 12,
-      };
-    }
+  useEffect(() => {
+    if (lastSelected.current === selectedId) return;
+    lastSelected.current = selectedId;
+    const target = data?.features.find((f) => f.id === selectedId) ?? data;
+    const bounds = target && boundsOf(target);
+    if (bounds) map.flyToBounds(bounds, { padding: [48, 48], maxZoom: 18, duration: 0.5 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, selectedId]);
 
-    console.log('📍 Calculating center from', parcelData.features.length, 'parcels');
-    const feature = parcelData.features[0];
-    const coords = feature.geometry.coordinates[0];
+  return null;
+}
 
-    // Find bounds
-    let minLng = Infinity;
-    let maxLng = -Infinity;
-    let minLat = Infinity;
-    let maxLat = -Infinity;
+function Legend({ statuses }: { statuses: RateStatus[] }) {
+  if (!statuses.length) return null;
+  return (
+    <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] flex flex-wrap gap-x-3 gap-y-1 bg-white/90 px-3 py-2 text-xs shadow-md backdrop-blur dark:bg-neutral-900/90">
+      {statuses.map((status) => (
+        <span key={status} className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-200">
+          <span className="h-2.5 w-2.5" style={{ backgroundColor: rateStatusMeta[status].color }} />
+          {rateStatusMeta[status].label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
-    coords.forEach(([lng, lat]) => {
-      if (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001) return;
-      
-      minLng = Math.min(minLng, lng);
-      maxLng = Math.max(maxLng, lng);
-      minLat = Math.min(minLat, lat);
-      maxLat = Math.max(maxLat, lat);
-    });
+const LeafletMap: React.FC<LeafletMapProps> = ({ parcelData, isLoading = false, selectedId, onSelect, visible = true }) => {
+  const statuses = useMemo(
+    () => [...new Set(parcelData?.features.map((f) => f.properties.payment_status) ?? [])],
+    [parcelData]
+  );
 
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLng = (minLng + maxLng) / 2;
-
-    console.log('📍 Calculated center:', centerLat, centerLng);
-
-    // Calculate zoom
-    const latDiff = maxLat - minLat;
-    const lngDiff = maxLng - minLng;
-    const maxDiff = Math.max(latDiff, lngDiff);
-    
-    let calculatedZoom = 18;
-    if (maxDiff > 0.1) calculatedZoom = 12;
-    else if (maxDiff > 0.01) calculatedZoom = 15;
-    else if (maxDiff > 0.001) calculatedZoom = 17;
-
-    return {
-      center: [centerLat, centerLng] as [number, number],
-      zoom: calculatedZoom,
-    };
-  }, [parcelData]);
-
-  if (!isClient) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-900">
-        <p className="text-neutral-600 dark:text-neutral-400">Initializing map...</p>
-      </div>
-    );
-  }
+  const styleFor = (feature?: unknown) => {
+    const parcel = feature as RateParcelFeature | undefined;
+    const color = rateStatusMeta[parcel?.properties.payment_status ?? 'not_billed'].color;
+    const selected = parcel?.id === selectedId;
+    return { color, weight: selected ? 4 : 2, opacity: 1, fillColor: color, fillOpacity: selected ? 0.45 : 0.3 };
+  };
 
   return (
     <div className="absolute inset-0 h-full w-full">
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        scrollWheelZoom={true}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={true}
-        key={`${center[0]}-${center[1]}`}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        
-        {parcelData?.features && parcelData.features.length > 0 && (
+      <MapContainer center={NAIROBI} zoom={12} scrollWheelZoom className="square-map h-full w-full">
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer name="Map">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maxZoom={19}
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer checked name="Satellite">
+            <TileLayer
+              attribution="Tiles &copy; Esri"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
+
+        {!!parcelData?.features.length && (
           <GeoJSON
-            key={JSON.stringify(parcelData)}
-            data={parcelData as any}
-            style={{
-              color: '#22c55e',
-              weight: 2,
-              opacity: 0.8,
-              fillColor: '#22c55e',
-              fillOpacity: 0.2,
+            key={`${parcelData.year}-${selectedId}-${parcelData.features.map((f) => f.properties.payment_status).join()}`}
+            data={parcelData as never}
+            style={styleFor}
+            onEachFeature={(feature, layer) => {
+              const props = (feature as RateParcelFeature).properties;
+              layer.bindTooltip(`Plot ${props.parcel_ref} · ${rateStatusMeta[props.payment_status].label}`, {
+                sticky: true,
+              });
+              layer.on('click', () => onSelect?.((feature as RateParcelFeature).id));
             }}
           />
         )}
+        <FitToParcels data={parcelData} selectedId={selectedId} visible={visible} />
       </MapContainer>
 
-      {/* Info overlay - No parcels found */}
-      {!isLoading && !parcelData?.features?.length && (
-        <div className="absolute bottom-4 left-4 rounded-lg bg-blue-50 px-4 py-2 text-sm shadow-md dark:bg-blue-950/80">
-          <span className="font-medium text-blue-900 dark:text-blue-100">
-            No parcels found for this user
-          </span>
+      <Legend statuses={statuses} />
+
+      {isLoading && (
+        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/60 text-sm text-neutral-600 dark:bg-neutral-900/60 dark:text-neutral-300">
+          Loading map…
         </div>
       )}
-
-      {/* Parcel count */}
-      {parcelData?.features && parcelData.features.length > 0 && (
-        <div className="absolute bottom-4 left-4 rounded-lg bg-green-50 px-4 py-2 text-sm shadow-md dark:bg-green-950/80">
-          <span className="font-medium text-green-900 dark:text-green-100">
-            ✓ {parcelData.features.length} parcel{parcelData.features.length !== 1 ? 's' : ''}
-          </span>
+      {!isLoading && !parcelData?.features.length && (
+        <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 px-3 py-2 text-xs text-neutral-700 shadow-md dark:bg-neutral-900/90 dark:text-neutral-200">
+          No plots allocated to you yet
         </div>
       )}
     </div>

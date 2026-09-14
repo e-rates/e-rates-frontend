@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '@/lib/backend';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch('http://5.189.150.44/api/token/phone/', {
+    const response = await fetch(`${BACKEND_URL}/api/token/phone/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

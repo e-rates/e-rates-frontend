@@ -1,14 +1,13 @@
 import type { Metadata } from 'next';
-import { DM_Sans } from 'next/font/google';
+import { Geist } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from './providers';
 import { ThemedToaster } from './components/themed-toaster';
-import { ThemeController } from './components/ThemeController';
 
-const dmSans = DM_Sans({
-  variable: '--font-dm-sans',
+const geistSans = Geist({
+  variable: '--font-geist-sans',
   subsets: ['latin'],
-  weight: ['400', '500', '700'], // Regular, Medium, Bold
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -22,15 +21,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${dmSans.variable} antialiased`}>
+    <html lang="en" suppressHydrationWarning className={geistSans.variable}>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          forcedTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
-          <ThemeController />
           {children}
           <ThemedToaster />
         </ThemeProvider>

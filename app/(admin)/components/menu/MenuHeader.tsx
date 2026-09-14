@@ -14,7 +14,7 @@ export const MenuHeader = ({
 }: MenuHeaderProps) => {
   return (
     <div
-      className={`flex w-full flex-row items-center transition-all duration-500 ${
+      className={`flex w-full flex-row items-center transition-all duration-300 ${
         isCollapsed ? 'justify-center' : 'justify-between px-2'
       }`}
     >
