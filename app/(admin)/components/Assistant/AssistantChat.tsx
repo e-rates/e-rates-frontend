@@ -150,12 +150,16 @@ export function ThinkingIndicator() {
   );
 }
 
-const sourceLabel = (s: { tool: string; args: Record<string, unknown> }) => {
-  const detail = Object.entries(s.args)
+const sourceLabel = (s: { tool?: string; args?: Record<string, unknown> } | string) => {
+  if (typeof s === 'string') return s;
+  if (!s || typeof s !== 'object') return String(s ?? '');
+  const args = s.args && typeof s.args === 'object' ? s.args : {};
+  const detail = Object.entries(args)
     .filter(([, v]) => v !== '' && v !== null && v !== undefined)
     .map(([k, v]) => `${k} ${v}`)
     .join(', ');
-  return `${TOOL_LABELS[s.tool] ?? s.tool}${detail ? ` · ${detail}` : ''}`;
+  const toolName = (s.tool && TOOL_LABELS[s.tool]) || s.tool || 'Database';
+  return `${toolName}${detail ? ` · ${detail}` : ''}`;
 };
 
 export function AssistantChat({ compact = false, userRole }: { compact?: boolean; userRole?: string }) {
