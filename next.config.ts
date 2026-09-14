@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 // Never fall back to production: a missing env var must land on localhost, not a live county.
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
+const BACKEND_URL = process.env.INTERNAL_BACKEND_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000';
 
 const nextConfig: NextConfig = {
   // Emits .next/standalone so the runtime image ships only what it needs.

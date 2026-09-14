@@ -7,7 +7,12 @@ export class SessionExpiredError extends Error {
   }
 }
 
-export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? '';
+// In the browser, always use relative URLs ('') so client requests go through the Next.js reverse proxy.
+// On the server (SSR / API routes), connect directly to Django backend on localhost:8000.
+export const BACKEND_URL =
+  typeof window !== 'undefined'
+    ? ''
+    : (process.env.INTERNAL_BACKEND_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000');
 
 export async function backendFetch(
   path: string,

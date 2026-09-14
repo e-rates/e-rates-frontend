@@ -4,8 +4,7 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Loader2, MapPin, Search, UserPlus, ArrowRight, X, Check, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { backendJson } from '@/lib/backend';
-import { authService } from '@/lib/auth';
+import { backendFetch, backendJson } from '@/lib/backend';
 import { invalidateParcelCache } from '@/lib/parcelCache';
 import { refreshPaymentStatuses } from '@/lib/paymentStatuses';
 import { EmptyState } from '../../components/EmptyState';
@@ -117,10 +116,9 @@ export default function AllocationsPage() {
     if (!parcel || !owner) return;
     setAllocating(true);
     try {
-      const token = await authService.getValidAccessToken();
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL ?? ''}/api/admin/parcels/allocate_parcel/`, {
+      const response = await backendFetch('/api/admin/parcels/allocate_parcel/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parcel_id: parcel.parcel_id, user_id: owner.user_id }),
       });
       const body = await response.json().catch(() => ({}));
