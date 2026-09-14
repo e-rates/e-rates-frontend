@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
 
   // Match Django's APPEND_SLASH = False setting
   trailingSlash: false,
+  skipTrailingSlashRedirect: true,
 
   // Optimize compilation speed
   experimental: {
@@ -70,20 +71,12 @@ const nextConfig: NextConfig = {
       // Proxy all /api/* paths to Django except those handled by Next.js
       // Next.js API routes take precedence over rewrites
       {
-        source: '/api/token/:path*',
-        destination: `${BACKEND_URL}/api/token/:path*`,
-      },
-      {
-        source: '/api/users/:path*',
-        destination: `${BACKEND_URL}/api/users/:path*`,
-      },
-      {
-        source: '/api/admin/:path*',
-        destination: `${BACKEND_URL}/api/admin/:path*`,
-      },
-      {
         source: '/media/:path*',
         destination: `${BACKEND_URL}/media/:path*`,
+      },
+      {
+        source: '/api/:path*',
+        destination: `${BACKEND_URL}/api/:path*`,
       },
     ];
   },
