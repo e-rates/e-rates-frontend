@@ -10,7 +10,6 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'error';
   text: string;
   sources?: { tool: string; args: Record<string, unknown> }[];
-  usedFallback?: boolean;
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -186,6 +185,7 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
       .filter((m) => m.role !== 'error' && m.text.trim())
       .slice(-HISTORY_TURNS)
       .map((m) => ({ role: m.role, text: m.text }));
+    const base = messages.length + 1;
     setMessages((m) => [...m, { role: 'user', text: query }]);
     setText('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -196,19 +196,36 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, history }),
       });
-      const body = await response.json().catch(() => ({}));
-      setMessages((m) => [
-        ...m,
-        response.ok
-          ? { role: 'assistant', text: body.answer ?? '', sources: body.sources ?? [], usedFallback: !!body.used_fallback }
-          : {
-              role: 'error',
-              text:
-                response.status === 503
-                  ? 'The assistant is offline. Set LLM_API_URL on the server to the running Colab link.'
-                  : body.error || body.detail || `Request failed (${response.status})`,
-            },
-      ]);
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => ({}));
+        setMessages((m) => [...m, { role: 'error', text: body.error || body.detail || `Request failed (${response.status})` }]);
+        return;
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let answer = '';
+      let sources: ChatMessage['sources'] = [];
+      let failure = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split('\n');
+        buffer = done ? '' : (lines.pop() ?? '');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+          if (event.sources) sources = event.sources;
+          if (event.text) answer += event.text;
+          if (event.error) failure = event.error;
+        }
+        const next: ChatMessage[] = [
+          ...(answer ? [{ role: 'assistant' as const, text: answer, sources }] : []),
+          ...(failure ? [{ role: 'error' as const, text: failure }] : []),
+        ];
+        setMessages((m) => [...m.slice(0, base), ...next]);
+        if (done) break;
+      }
     } catch (error) {
       setMessages((m) => [...m, { role: 'error', text: (error as Error).message }]);
     } finally {
@@ -259,13 +276,12 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
                 {!!message.sources?.length && (
                   <p className="mt-2 pl-4 text-[11px] text-text-tertiary">
                     From: {message.sources.map(sourceLabel).join(' · ')}
-                    {message.usedFallback && ' · picked by keyword match'}
                   </p>
                 )}
               </div>
             )
           )}
-          {sending && <ThinkingIndicator />}
+          {sending && messages[messages.length - 1]?.role === 'user' && <ThinkingIndicator />}
           <div ref={bottomRef} />
         </div>
       </div>
