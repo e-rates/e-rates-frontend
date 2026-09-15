@@ -8,8 +8,6 @@ import QuickAcessTools from '../components/QuickAccess/QuickAcessTools';
 import QuickToolsBar from '../components/QuickTools/QuickToolsBar';
 import { MapProvider } from '../context/MapContext';
 import { useNavCollapse } from '../components/NavCollapse';
-import { AiPanel } from '../components/Assistant/AskAiButton';
-import { useAuth } from '@/hooks/useAuth';
 
 /** Routes whose side panel holds real tools or live data; everywhere else runs full width. */
 const SIDE_PANEL_ROUTES = [
@@ -29,7 +27,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const showQuickTools = PARCEL_SEARCH_ROUTES.some((route) => pathname?.startsWith(route));
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { collapsed } = useNavCollapse();
-  const { userRole } = useAuth();
   const [panelExpanded, setPanelExpanded] = useState(false);
 
   return (
@@ -85,8 +82,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* AI panel pushes layout — no overlay */}
-        <AiPanel userRole={userRole ?? undefined} />
       </div>
     </MapProvider>
   );

@@ -9,7 +9,6 @@ import { FullPageLoader } from '../components/loading-spinner';
 import { isRouteAllowed } from './components/menu/menuData';
 import { NavCollapseProvider } from './components/NavCollapse';
 import { IdleTimeout } from './components/IdleTimeout';
-import { AiPanelProvider } from './components/Assistant/AskAiButton';
 
 export default function AdminLayout({
   children,
@@ -56,13 +55,11 @@ export default function AdminLayout({
 
   return (
     <NavCollapseProvider>
-      <AiPanelProvider>
         <div className="bg-white dark:bg-neutral-800/30 mx-auto min-h-screen w-full max-w-[1366px] px-2">
           <IdleTimeout />
           <Header />
           <div>{children}</div>
         </div>
-      </AiPanelProvider>
     </NavCollapseProvider>
   );
 }

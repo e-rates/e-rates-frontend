@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Download, FileText } from 'lucide-react';
+import { Send, Download, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
-import { backendFetch } from '@/lib/backend';
+import { backendFetch, backendJson } from '@/lib/backend';
 import { downloadBlob } from '@/lib/format';
 
 async function downloadPdf(href: string) {
@@ -27,6 +27,13 @@ export interface ChatMessage {
   sources?: { tool: string; args: Record<string, unknown> }[];
 }
 
+interface StoredMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  sources?: ChatMessage['sources'];
+  error?: string;
+}
+
 const TOOL_LABELS: Record<string, string> = {
   collections_summary: 'Collections',
   ward_summary: 'Ward summary',
@@ -35,48 +42,38 @@ const TOOL_LABELS: Record<string, string> = {
   plot_lookup: 'Plot lookup',
   owner_lookup: 'Owner lookup',
   payments_in_period: 'Payment register',
+  years_summary: 'Rating years',
+  counties: 'Counties',
   generate_analysis_pdf: 'Executive Analysis (PDF)',
   generate_report_pdf: 'Official Report (PDF)',
 };
 
 const EXAMPLES_BY_ROLE: Record<string, string[]> = {
   admin: [
-    'Generate an executive analysis PDF report for 2026',
-    'Export arrears & defaulters report as PDF',
+    'How many parcels have owners, and who are they?',
     'How much have we collected this year, by ward?',
-    'Which wards have the lowest collection rates?',
     'Who has been overdue for more than 60 days?',
-    'Show me today\'s payment collections',
-    'List plots in Karura ward that are unpaid',
-    'Show history of plot 1865',
+    'Show all years with unpaid bills',
+    'Generate an executive analysis PDF report',
+    'Show history of plot 935',
   ],
   auditor: [
     'Export arrears & defaulters report as PDF',
-    'Generate collections report for 2026 as PDF',
-    'Which plots in Karura ward are overdue?',
-    'Who has been overdue for more than 90 days?',
     'Show payments received this month',
     'How much revenue is outstanding this year?',
+    'Who has been overdue for more than 90 days?',
   ],
   owner: [
-    'Generate an executive analysis PDF for 2026',
-    'Which counties have the highest collection rates?',
+    'Which counties do we have?',
+    'Generate an executive analysis PDF',
     'Show all years with unpaid bills',
-    'Compare ward performance across sub-counties',
-    'What is the total revenue collected to date?',
   ],
   default: [
     'How much have we collected this year?',
     'Who has been overdue for more than 60 days?',
-    'Show the history of plot 1865',
-    'Generate an executive analysis PDF for 2026',
   ],
 };
 
-const getExamples = (role?: string) =>
-  EXAMPLES_BY_ROLE[role ?? 'default'] ?? EXAMPLES_BY_ROLE['default'];
-
-const HISTORY_TURNS = 6; // matches max_length on the backend serializer
 const MD_CELL = 'border-border-default border-[0.5px] px-2.5 py-1.5 text-left align-top';
 
 export function AssistantMarkdown({ text }: { text: string }) {
@@ -93,6 +90,7 @@ export function AssistantMarkdown({ text }: { text: string }) {
           thead: ({ children }) => <thead className="bg-hover-surface">{children}</thead>,
           th: ({ children }) => <th className={`${MD_CELL} font-medium text-text-secondary`}>{children}</th>,
           td: ({ children }) => <td className={MD_CELL}>{children}</td>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold text-text-primary">{children}</h3>,
           ul: ({ children }) => <ul className="list-disc space-y-1 pl-5">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal space-y-1 pl-5">{children}</ol>,
           p: ({ children }) => <p className="leading-relaxed">{children}</p>,
@@ -104,36 +102,29 @@ export function AssistantMarkdown({ text }: { text: string }) {
             const isPdf = href && (href.includes('/ai-download/') || href.includes('.pdf'));
             if (isPdf) {
               return (
-                <div className="my-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none border border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-900/60">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-red-600 text-[10px] font-bold text-white tracking-wider">
+                <span className="my-2.5 flex flex-col justify-between gap-3 border border-neutral-300 bg-neutral-50 p-3 sm:flex-row sm:items-center dark:border-neutral-700 dark:bg-neutral-900/60">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-red-600 text-[10px] font-bold tracking-wider text-white">
                       PDF
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-text-primary truncate">
-                        {children || 'Download PDF Report'}
-                      </p>
-                      <p className="text-[11px] text-text-tertiary">Generated by E-Rates AI · Ready for download</p>
-                    </div>
-                  </div>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold text-text-primary">{children || 'Download PDF Report'}</span>
+                      <span className="block text-[11px] text-text-tertiary">Generated by E-Rates AI · Ready for download</span>
+                    </span>
+                  </span>
                   <button
                     type="button"
                     onClick={() => downloadPdf(href)}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-none bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>Download PDF</span>
                   </button>
-                </div>
+                </span>
               );
             }
             return (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2 hover:text-primary transition-colors"
-              >
+              <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-primary">
                 {children}
               </a>
             );
@@ -175,12 +166,42 @@ const sourceLabel = (s: { tool?: string; args?: Record<string, unknown> } | stri
   return `${toolName}${detail ? ` · ${detail}` : ''}`;
 };
 
-export function AssistantChat({ compact = false, userRole }: { compact?: boolean; userRole?: string }) {
+const fromStored = (stored: StoredMessage[]): ChatMessage[] =>
+  stored.flatMap((m) => [
+    ...(m.text ? [{ role: m.role, text: m.text, sources: m.sources }] : []),
+    ...(m.error ? [{ role: 'error' as const, text: m.error }] : []),
+  ]);
+
+export function AssistantChat({
+  conversationId,
+  onConversation,
+  userRole,
+}: {
+  conversationId: string | null;
+  onConversation: (id: string) => void;
+  userRole?: string;
+}) {
   const [text, setText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const currentId = useRef<string | null | undefined>(undefined);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (conversationId === currentId.current) return;
+    currentId.current = conversationId;
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    setLoading(true);
+    backendJson<{ messages: StoredMessage[] }>(`/api/conversations/${conversationId}/`)
+      .then((conversation) => setMessages(fromStored(conversation.messages)))
+      .catch((e: Error) => setMessages([{ role: 'error', text: e.message }]))
+      .finally(() => setLoading(false));
+  }, [conversationId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -195,10 +216,6 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
   const send = async (preset?: string) => {
     const query = (preset ?? text).trim();
     if (!query || sending) return;
-    const history = messages
-      .filter((m) => m.role !== 'error' && m.text.trim())
-      .slice(-HISTORY_TURNS)
-      .map((m) => ({ role: m.role, text: m.text }));
     const base = messages.length + 1;
     setMessages((m) => [...m, { role: 'user', text: query }]);
     setText('');
@@ -208,7 +225,7 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
       const response = await backendFetch('/api/llm/analyze/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, history }),
+        body: JSON.stringify({ query, ...(currentId.current ? { conversation: currentId.current } : {}) }),
       });
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => ({}));
@@ -229,6 +246,11 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
         for (const line of lines) {
           if (!line.trim()) continue;
           const event = JSON.parse(line);
+          if (event.conversation) {
+            currentId.current = event.conversation;
+            onConversation(event.conversation);
+            continue;
+          }
           if (event.sources) sources = event.sources;
           if (event.text) answer += event.text;
           if (event.error) failure = event.error;
@@ -240,6 +262,7 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
         setMessages((m) => [...m.slice(0, base), ...next]);
         if (done) break;
       }
+      if (currentId.current) onConversation(currentId.current);
     } catch (error) {
       setMessages((m) => [...m, { role: 'error', text: (error as Error).message }]);
     } finally {
@@ -247,23 +270,28 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
     }
   };
 
-  const pad = compact ? 'px-4 py-4' : 'px-6 py-6';
-  const width = compact ? 'w-full' : 'mx-auto max-w-3xl';
+  const examples = EXAMPLES_BY_ROLE[userRole ?? 'default'] ?? EXAMPLES_BY_ROLE.default;
 
   return (
-    <>
-      <div className={`flex-1 overflow-y-auto ${pad}`}>
-        <div className={`flex flex-col gap-4 ${width}`}>
-          {messages.length === 0 && (
-            <div className={compact ? 'py-6' : 'py-16'}>
-              <p className="text-sm font-medium text-text-primary">Ask about collections, defaulters, wards, plots or payments.</p>
-              <p className="mt-1 text-xs text-text-tertiary">Answers come from live E-Rates data. The assistant can read but never change anything.</p>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {getExamples(userRole).map((example) => (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto flex max-w-4xl flex-col gap-5">
+          {loading && <ThinkingIndicator />}
+          {!loading && messages.length === 0 && (
+            <div className="py-16">
+              <div className="flex items-center gap-2 text-text-primary">
+                <Sparkles className="h-5 w-5" />
+                <p className="text-lg font-semibold">What would you like to know?</p>
+              </div>
+              <p className="mt-1 text-sm text-text-tertiary">
+                Ask about parcels, owners, bills, collections or defaulters. Answers come from live E-Rates data.
+              </p>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {examples.map((example) => (
                   <button
                     key={example}
                     onClick={() => send(example)}
-                    className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-left text-xs text-text-secondary transition-colors hover:border-neutral-400 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/60 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    className="border-border-default hover:bg-hover-surface border-[0.5px] px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {example}
                   </button>
@@ -273,7 +301,7 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
           )}
           {messages.map((message, i) =>
             message.role === 'user' ? (
-              <div key={i} className="border-border-default self-end border-[0.5px] px-4 py-2.5 text-sm text-text-primary">
+              <div key={i} className="bg-hover-surface max-w-[80%] self-end px-4 py-2.5 text-sm text-text-primary">
                 {message.text}
               </div>
             ) : (
@@ -288,9 +316,7 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
                   {message.role === 'error' ? message.text : <AssistantMarkdown text={message.text} />}
                 </div>
                 {!!message.sources?.length && (
-                  <p className="mt-2 pl-4 text-[11px] text-text-tertiary">
-                    From: {message.sources.map(sourceLabel).join(' · ')}
-                  </p>
+                  <p className="mt-2 pl-4 text-[11px] text-text-tertiary">From: {message.sources.map(sourceLabel).join(' · ')}</p>
                 )}
               </div>
             )
@@ -300,8 +326,8 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
         </div>
       </div>
 
-      <div className={`border-border-default w-full shrink-0 border-t-[0.5px] ${compact ? 'px-4 py-3' : 'px-6 py-3'}`}>
-        <div className={`border-border-default focus-within:border-text-tertiary flex w-full items-end gap-3 border-[0.5px] px-3 py-1.5 text-[14px] text-text-primary transition-colors ${width}`}>
+      <div className="border-border-default w-full shrink-0 border-t-[0.5px] px-6 py-4">
+        <div className="border-border-default focus-within:border-text-tertiary mx-auto flex max-w-4xl items-end gap-3 border-[0.5px] px-3 py-2 text-[14px] text-text-primary transition-colors">
           <textarea
             ref={textareaRef}
             value={text}
@@ -325,10 +351,10 @@ export function AssistantChat({ compact = false, userRole }: { compact?: boolean
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <p className={`mt-1.5 text-[10px] text-text-tertiary ${width}`}>
+        <p className="mx-auto mt-1.5 max-w-4xl text-[10px] text-text-tertiary">
           Answers can be wrong. Check figures against Reports before acting on them.
         </p>
       </div>
-    </>
+    </div>
   );
 }

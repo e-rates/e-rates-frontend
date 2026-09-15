@@ -2,14 +2,16 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Download, UserCheck, X } from 'lucide-react';
+import { Download, FilePlus2, Plus, UserCheck, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { AssistantChat } from '../../components/Assistant/AssistantChat';
+import { IssueBills } from '../../components/Billing/IssueBills';
+import { useAuth } from '@/hooks/useAuth';
+import { ratingYears } from '@/lib/rates';
 import { exportDefaulters, fetchDefaulters } from './service';
 import { backendJson } from '@/lib/backend';
 import { downloadBlob, downloadCSV, formatMoney, today } from '@/lib/format';
 import { titleCase } from '../../components/QuickAccess/WardsPanel';
-import { YearTabs, useYearParam } from '../../components/YearSelect';
+import { useYearParam } from '../../components/YearSelect';
 import { EmptyState } from '../../components/EmptyState';
 
 interface DefaulterRow {
@@ -229,7 +231,7 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
         }
         actions={
           <>
-            <button onClick={() => router.push(`/dashboard/defaulters?tab=tables${selectedYear !== new Date().getFullYear() ? `&year=${selectedYear}` : ''}`)} className={exportButton}>
+            <button onClick={() => router.push(`/dashboard/defaulters${selectedYear !== new Date().getFullYear() ? `?year=${selectedYear}` : ''}`)} className={exportButton}>
               <X className="h-4 w-4" /> All defaulters
             </button>
             <button onClick={exportWard} disabled={!rows?.length} className={exportButton}>
@@ -306,59 +308,79 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
   );
 }
 
-type Tab = 'chat' | 'tables';
-
 function DefaultersView() {
   const params = useSearchParams();
-  const router = useRouter();
   const ward = params.get('ward');
-  const [year] = useYearParam();
-  const activeTab: Tab = ward || params.get('tab') === 'tables' ? 'tables' : 'chat';
+  const [year, setYear] = useYearParam();
+  const { userRole } = useAuth();
+  const canBill = userRole === 'admin';
+  const [billedYears, setBilledYears] = useState<number[]>([]);
+  const [billingYear, setBillingYear] = useState<number | null>(null);
+  const [refresh, setRefresh] = useState(0);
 
-  const setActiveTab = (tab: Tab) => {
-    const query = new URLSearchParams();
-    if (tab !== 'chat') query.set('tab', tab);
-    if (params.get('year')) query.set('year', params.get('year')!);
-    router.replace(`/dashboard/defaulters${query.toString() ? `?${query}` : ''}`);
+  useEffect(() => {
+    backendJson<{ year: number }[]>('/api/rate-schedules/')
+      .then((schedules) => setBilledYears(schedules.map((s) => s.year)))
+      .catch(() => setBilledYears([]));
+  }, [refresh]);
+
+  const current = new Date().getFullYear();
+  const years = Array.from(new Set([current, year, ...billedYears])).sort((a, b) => b - a);
+  const nextYear = ratingYears().find((y) => !years.includes(y)) ?? current;
+
+  const issued = (issuedYear: number) => {
+    setBillingYear(null);
+    setYear(issuedYear);
+    setRefresh((n) => n + 1);
   };
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'chat', label: 'Chat' },
-    { key: 'tables', label: ward ? `View Tables · ${titleCase(ward)}` : 'View Tables' },
-  ];
 
   return (
     <div className="bg-main-bg flex h-full w-full flex-col overflow-hidden">
-      <div className="border-border-default flex w-full items-center justify-between gap-4 border-b-[0.5px] px-6 pt-3">
-        <div className="flex gap-8">
-          {tabs.map((tab) => (
+      <div className="border-border-default flex w-full flex-wrap items-end justify-between gap-3 border-b-[0.5px] px-6 pt-3">
+        <div role="tablist" aria-label="Rating year" className="flex items-end gap-1 overflow-x-auto">
+          {years.map((y) => {
+            const active = y === year;
+            return (
+              <button
+                key={y}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setYear(y)}
+                className={`relative flex items-center gap-1.5 px-3 pb-3 text-sm transition-colors ${
+                  active ? 'font-semibold text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                {y}
+                {!billedYears.includes(y) && <span className="text-[10px] font-normal text-text-tertiary">no rates</span>}
+                {active && <span className="absolute inset-x-2 bottom-0 h-[2px] bg-text-primary" />}
+              </button>
+            );
+          })}
+          {canBill && (
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`relative pb-3 text-sm font-medium transition-colors ${
-                activeTab === tab.key ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary'
-              }`}
+              onClick={() => setBillingYear(nextYear)}
+              aria-label="Add a rating year"
+              title="Set rates and issue bills for another year"
+              className="hover:bg-hover-surface mb-2 flex h-7 w-7 items-center justify-center text-text-tertiary transition-colors hover:text-text-primary"
             >
-              {tab.label}
-              {activeTab === tab.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-text-primary" />}
+              <Plus className="h-4 w-4" />
             </button>
-          ))}
+          )}
         </div>
-        {activeTab === 'tables' && ward && (
-          <div className="flex items-center gap-3">
-            <span className="pb-3 text-xs text-text-tertiary">Rating year</span>
-            <YearTabs />
-          </div>
+        {canBill && (
+          <button onClick={() => setBillingYear(year)} className={`${exportButton} mb-2`}>
+            <FilePlus2 className="h-4 w-4" /> {billedYears.includes(year) ? `Update ${year} rates` : `Issue ${year} bills`}
+          </button>
         )}
       </div>
 
-      {activeTab === 'chat' ? (
-        <AssistantChat />
-      ) : ward ? (
-        <WardParcelsTable key={`${ward}-${year}`} ward={ward} year={year} />
+      {ward ? (
+        <WardParcelsTable key={`${ward}-${year}-${refresh}`} ward={ward} year={year} />
       ) : (
-        <DefaultersTable />
+        <DefaultersTable key={refresh} />
       )}
+
+      {canBill && <IssueBills year={billingYear} isOwner={false} onClose={() => setBillingYear(null)} onIssued={issued} />}
     </div>
   );
 }

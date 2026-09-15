@@ -153,7 +153,7 @@ const Header = () => {
       >
         <NavCollapseToggle />
 
-        <AskAiButton userRole={profile?.role} />
+        <AskAiButton />
 
         <NotificationBell />
 

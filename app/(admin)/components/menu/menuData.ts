@@ -12,6 +12,7 @@ import HistoryCircleIcon from '@/app/components/ui/history-circle-icon';
 import UploadIcon from '@/app/components/ui/upload-icon';
 import UserIcon from '@/app/components/ui/user-icon';
 import GearIcon from '@/app/components/ui/gear-icon';
+import SparklesIcon from '@/app/components/ui/sparkles-icon';
 
 export type MenuIcon = ForwardRefExoticComponent<
   AnimatedIconProps & RefAttributes<AnimatedIconHandle>
@@ -37,6 +38,7 @@ export const menuItems: MenuItem[] = [
   { name: 'Land Owners', icon: UserIcon, href: '/dashboard/land-owners', roles: OPERATIONS_ROLES },
   { name: 'Allocations', icon: UserIcon, href: '/dashboard/allocations', roles: OPERATIONS_ROLES },
   { name: 'Defaulters', icon: TriangleAlertIcon, href: '/dashboard/defaulters', roles: ['admin', 'auditor'] },
+  { name: 'Ask AI', icon: SparklesIcon, href: '/dashboard/ask-ai', roles: ['admin', 'auditor', 'owner'] },
   { name: 'Deletions', icon: TriangleAlertIcon, href: '/dashboard/deletion-requests', roles: OVERSIGHT_ROLES },
   { name: 'Reports', icon: ChartBarIcon, href: '/dashboard/reports', roles: ['admin', 'auditor'] },
   { name: 'Audit Log', icon: HistoryCircleIcon, href: '/dashboard/audit', roles: OVERSIGHT_ROLES },
