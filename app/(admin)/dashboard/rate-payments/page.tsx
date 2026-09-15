@@ -8,6 +8,8 @@ import { downloadCSV, formatDate, formatMoney, today } from '@/lib/format';
 import { parcelOf, type Paginated, type Payment } from '@/lib/payments';
 import { EmptyState } from '../../components/EmptyState';
 import { YearSelect, useYearParam } from '../../components/YearSelect';
+import { useAuth } from '@/hooks/useAuth';
+import { IssueBills } from './IssueBills';
 
 const CELL = 'px-5 py-2.5 whitespace-nowrap';
 const HEAD = 'bg-main-bg sticky top-0 z-10 text-left text-[11px] font-medium tracking-wide text-text-tertiary uppercase';
@@ -35,6 +37,8 @@ const receiptOf = (p: Payment) =>
 
 function PaymentsView() {
   const [year] = useYearParam();
+  const { userRole } = useAuth();
+  const [reload, setReload] = useState(0);
   const [status, setStatus] = useState<'' | Payment['status']>('');
   const [payments, setPayments] = useState<Payment[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -64,7 +68,7 @@ function PaymentsView() {
       cancelled = true;
       setPayments(null);
     };
-  }, [year, status]);
+  }, [year, status, reload]);
 
   const loadMore = async () => {
     if (!next) return;
@@ -112,6 +116,9 @@ function PaymentsView() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {(userRole === 'admin' || userRole === 'owner') && (
+            <IssueBills year={year} isOwner={userRole === 'owner'} onIssued={() => setReload((n) => n + 1)} />
+          )}
           <YearSelect />
           <button onClick={exportCsv} disabled={!payments?.length} className={button}>
             <Download className="h-4 w-4" /> Export CSV

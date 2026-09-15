@@ -66,7 +66,7 @@ export const rateStatusMeta: Record<RateStatus, { label: string; color: string; 
   not_billed: { label: 'No bill', color: '#a3a3a3', badge: NEUTRAL_BADGE },
 };
 
-export const FIRST_RATING_YEAR = 2023;
+export const FIRST_RATING_YEAR = new Date().getFullYear() - 20;
 
 export function ratingYears(): number[] {
   const current = new Date().getFullYear();
