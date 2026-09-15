@@ -8,12 +8,15 @@ import toast from 'react-hot-toast';
 import { backendFetch, backendJson } from '@/lib/backend';
 
 async function downloadPdf(href: string) {
+  const tab = window.open('', '_blank');
   try {
     const target = new URL(href, window.location.origin);
     target.searchParams.set('path', target.pathname.includes('ai-download') ? 'ai-download' : 'download');
     const { url } = await backendJson<{ url: string }>(`/api/reports/download-link/${target.search}`);
-    window.location.href = url;
+    if (tab) tab.location.href = url;
+    else window.location.href = url;
   } catch (e) {
+    tab?.close();
     toast.error((e as Error).message);
   }
 }

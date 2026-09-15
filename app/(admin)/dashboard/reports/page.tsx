@@ -41,10 +41,13 @@ export default function ReportsPage() {
       query.set('to', to);
     }
     setBusy(`${report}-${format}`);
+    const tab = format === 'pdf' ? window.open('', '_blank') : null;
     try {
       const { url } = await backendJson<{ url: string }>(`/api/reports/download-link/?${query}`);
-      window.location.href = url;
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
     } catch (e) {
+      tab?.close();
       const message = (e as Error).message;
       toast.error(
         message === 'Failed to fetch'
