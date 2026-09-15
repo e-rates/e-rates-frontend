@@ -17,7 +17,7 @@ export function AdminNav() {
 
   const items = useMemo(() => visibleMenuItems(menuItems, role), [role]);
   const trailing = useMemo(
-    () => visibleMenuItems(bottomMenuItems, role).filter((item) => item.name === 'Settings'),
+    () => visibleMenuItems(bottomMenuItems, role).filter((item) => item.name === 'Ask AI' || item.name === 'Settings'),
     [role]
   );
 

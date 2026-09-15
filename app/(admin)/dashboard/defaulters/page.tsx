@@ -6,6 +6,7 @@ import { BadgePercent, Download, FilePlus2, Plus, UserCheck, X } from 'lucide-re
 import toast from 'react-hot-toast';
 import { IssueBills } from '../../components/Billing/IssueBills';
 import { Waivers } from '../../components/Billing/Waivers';
+import { PaymentsView } from '../../components/Billing/PaymentsView';
 import { useAuth } from '@/hooks/useAuth';
 import { ratingYears } from '@/lib/rates';
 import { exportDefaulters, fetchDefaulters } from './service';
@@ -311,7 +312,9 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
 
 function DefaultersView() {
   const params = useSearchParams();
+  const router = useRouter();
   const ward = params.get('ward');
+  const view = params.get('view') === 'payments' ? 'payments' : 'defaulters';
   const [year, setYear] = useYearParam();
   const { userRole } = useAuth();
   const canBill = userRole === 'admin';
@@ -329,6 +332,14 @@ function DefaultersView() {
   const current = new Date().getFullYear();
   const years = Array.from(new Set([current, year, ...billedYears])).sort((a, b) => b - a);
   const nextYear = ratingYears().find((y) => !years.includes(y)) ?? current;
+
+  const showView = (next: 'payments' | 'defaulters') => {
+    const query = new URLSearchParams(params.toString());
+    query.delete('ward');
+    if (next === 'payments') query.set('view', 'payments');
+    else query.delete('view');
+    router.replace(`/dashboard/defaulters${query.size ? `?${query}` : ''}`);
+  };
 
   const issued = (issuedYear: number) => {
     setBillingYear(null);
@@ -369,8 +380,22 @@ function DefaultersView() {
             </button>
           )}
         </div>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div role="tablist" aria-label="View" className="border-border-default flex border-[0.5px] text-sm">
+            {(['defaulters', 'payments'] as const).map((v) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => showView(v)}
+                className={`px-3 py-1.5 transition-colors ${view === v ? 'bg-text-primary text-main-bg font-medium' : 'text-text-secondary hover:bg-hover-surface'}`}
+              >
+                {v === 'payments' ? 'All payments' : 'Defaulters'}
+              </button>
+            ))}
+          </div>
         {canBill && (
-          <div className="mb-2 flex gap-2">
+          <div className="flex gap-2">
             <button onClick={() => setWaiversOpen(true)} className={exportButton}>
               <BadgePercent className="h-4 w-4" /> Waivers
             </button>
@@ -379,9 +404,12 @@ function DefaultersView() {
             </button>
           </div>
         )}
+        </div>
       </div>
 
-      {ward ? (
+      {view === 'payments' ? (
+        <PaymentsView key={`payments-${year}-${refresh}`} />
+      ) : ward ? (
         <WardParcelsTable key={`${ward}-${year}-${refresh}`} ward={ward} year={year} />
       ) : (
         <DefaultersTable key={refresh} />

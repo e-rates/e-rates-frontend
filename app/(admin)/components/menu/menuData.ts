@@ -33,12 +33,10 @@ export const OVERSIGHT_ROLES = ['admin', 'auditor', 'owner'];
 export const menuItems: MenuItem[] = [
   { name: 'Home', icon: HomeIcon, href: '/dashboard/home', roles: ['admin', 'auditor', 'owner'] },
   { name: 'Counties', icon: MapPinIcon, href: '/dashboard/counties', roles: ['owner'] },
-  { name: 'Rate Payments', icon: WalletIcon, href: '/dashboard/rate-payments', roles: OPERATIONS_ROLES },
   { name: 'Parcels Map', icon: MapPinIcon, href: '/dashboard/parcels-map', roles: OPERATIONS_ROLES },
   { name: 'Land Owners', icon: UserIcon, href: '/dashboard/land-owners', roles: OPERATIONS_ROLES },
   { name: 'Allocations', icon: UserIcon, href: '/dashboard/allocations', roles: OPERATIONS_ROLES },
-  { name: 'Defaulters', icon: TriangleAlertIcon, href: '/dashboard/defaulters', roles: ['admin', 'auditor'] },
-  { name: 'Ask AI', icon: SparklesIcon, href: '/dashboard/ask-ai', roles: ['admin', 'auditor', 'owner'] },
+  { name: 'Payments & Defaulters', icon: WalletIcon, href: '/dashboard/defaulters', roles: ['admin', 'auditor'] },
   { name: 'Deletions', icon: TriangleAlertIcon, href: '/dashboard/deletion-requests', roles: OVERSIGHT_ROLES },
   { name: 'Reports', icon: ChartBarIcon, href: '/dashboard/reports', roles: ['admin', 'auditor'] },
   { name: 'Audit Log', icon: HistoryCircleIcon, href: '/dashboard/audit', roles: OVERSIGHT_ROLES },
@@ -49,6 +47,7 @@ export const visibleMenuItems = (items: MenuItem[], role: string | null) =>
   items.filter((item) => role !== null && item.roles.includes(role));
 
 export const bottomMenuItems: MenuItem[] = [
+  { name: 'Ask AI', icon: SparklesIcon, href: '/dashboard/ask-ai', roles: ['admin', 'auditor', 'owner'] },
   { name: 'Account', icon: UserIcon, href: '/dashboard/account', roles: ['admin', 'auditor', 'owner'] },
   { name: 'Settings', icon: GearIcon, href: '/dashboard/settings', roles: ['admin', 'auditor', 'owner'] },
 ];
