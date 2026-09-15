@@ -5,19 +5,33 @@ import { Send, Download, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
-import { backendFetch, backendJson } from '@/lib/backend';
+import { backendFetch } from '@/lib/backend';
+import { downloadBlob } from '@/lib/format';
 
 async function downloadPdf(href: string) {
-  const tab = window.open('', '_blank');
+  const toastId = toast.loading('Preparing download...');
   try {
+    const res = await backendFetch(href);
+    if (!res.ok) {
+      let errMessage = `Download failed (${res.status})`;
+      try {
+        const errData = await res.json();
+        if (errData.detail || errData.error) errMessage = errData.detail || errData.error;
+      } catch {}
+      throw new Error(errMessage);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('content-disposition') || '';
+    const match = cd.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?/i);
     const target = new URL(href, window.location.origin);
-    target.searchParams.set('path', target.pathname.includes('ai-download') ? 'ai-download' : 'download');
-    const { url } = await backendJson<{ url: string }>(`/api/reports/download-link/${target.search}`);
-    if (tab) tab.location.href = url;
-    else window.location.href = url;
+    const fallback = target.searchParams.get('file') || 'report.pdf';
+    const filename = (match && match[1]) ? match[1] : fallback;
+    downloadBlob(blob, filename);
+    toast.dismiss(toastId);
+    toast.success('Downloaded successfully');
   } catch (e) {
-    tab?.close();
-    toast.error((e as Error).message);
+    toast.dismiss(toastId);
+    toast.error((e as Error).message || 'Failed to download PDF');
   }
 }
 

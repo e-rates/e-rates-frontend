@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { backendJson } from '@/lib/backend';
+import { backendFetch } from '@/lib/backend';
+import { downloadBlob } from '@/lib/format';
 import { ratingYears } from '@/lib/rates';
 
 type Format = 'pdf' | 'xlsx';
@@ -41,13 +42,25 @@ export default function ReportsPage() {
       query.set('to', to);
     }
     setBusy(`${report}-${format}`);
-    const tab = format === 'pdf' ? window.open('', '_blank') : null;
     try {
-      const { url } = await backendJson<{ url: string }>(`/api/reports/download-link/?${query}`);
-      if (tab) tab.location.href = url;
-      else window.location.href = url;
+      const res = await backendFetch(`/api/reports/download/?${query}`);
+      if (!res.ok) {
+        let errMessage = `Failed to download report (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.detail || errData.error) errMessage = errData.detail || errData.error;
+        } catch {}
+        throw new Error(errMessage);
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('content-disposition') || '';
+      let filename = `${report}-${format === 'pdf' ? isoToday() : year}.${format}`;
+      const match = disposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?/i);
+      if (match && match[1]) {
+        filename = match[1];
+      }
+      downloadBlob(blob, filename);
     } catch (e) {
-      tab?.close();
       const message = (e as Error).message;
       toast.error(
         message === 'Failed to fetch'
