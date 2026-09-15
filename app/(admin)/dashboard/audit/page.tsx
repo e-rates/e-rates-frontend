@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/EmptyState';
 interface AuditEntry {
   audit_id: number;
   who_username: string | null;
+  who_email: string | null;
   action: string;
   category: 'auth' | 'parcel' | 'payment' | string;
   summary: string;
@@ -207,7 +208,10 @@ function AuditView() {
                           <td className={`${CELL} ${ALERT_ACTIONS.has(e.action) ? 'text-red-600 dark:text-red-400' : 'text-text-primary'}`}>
                             {e.summary}
                           </td>
-                          <td className={`${CELL} text-text-secondary`}>{e.who_username ?? '—'}</td>
+                          <td className={`${CELL} text-text-secondary`}>
+                            {e.who_username ?? '—'}
+                            {e.who_email && <span className="block text-xs text-text-tertiary">{e.who_email}</span>}
+                          </td>
                           <td className={`${CELL} font-mono text-xs text-text-tertiary`}>{e.ip_address ?? '—'}</td>
                           <td className={CELL}>
                             {e.integrity_verified ? (

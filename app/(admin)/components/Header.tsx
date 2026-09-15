@@ -23,9 +23,10 @@ function NavCollapseToggle() {
       aria-controls="admin-main-nav"
       aria-label={collapsed ? 'Show the menu' : 'Hide the menu'}
       title={collapsed ? 'Show the menu' : 'Hide the menu for more room'}
-      className="squircle-lg flex cursor-pointer items-center p-2 text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      className="squircle-lg flex cursor-pointer items-center gap-1.5 px-2.5 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
     >
-      {collapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+      {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+      {collapsed ? 'Expand' : 'Hide'}
     </button>
   );
 }

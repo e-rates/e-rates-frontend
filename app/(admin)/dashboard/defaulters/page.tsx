@@ -29,11 +29,11 @@ const TABLE_HEAD = 'border-border-default sticky top-0 z-10 bg-main-bg text-left
 const CELL = 'px-5 py-2.5 whitespace-nowrap';
 
 const STATUS: Record<string, { label: string; dot: string }> = {
-  overdue: { label: 'Overdue', dot: '#dc2626' },
-  unpaid: { label: 'Unpaid', dot: '#525252' },
-  processing: { label: 'Confirming', dot: '#2563eb' },
-  paid: { label: 'Paid', dot: '#16a34a' },
-  not_billed: { label: 'No bill', dot: '#a3a3a3' },
+  overdue: { label: 'Overdue', dot: '#ff3b30' },
+  unpaid: { label: 'Unpaid', dot: '#ff6961' },
+  processing: { label: 'Confirming', dot: '#007aff' },
+  paid: { label: 'Paid', dot: '#34c759' },
+  not_billed: { label: 'No bill', dot: '#aeaeb2' },
 };
 
 function StatusCell({ status }: { status: string }) {

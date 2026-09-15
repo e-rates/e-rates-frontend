@@ -75,11 +75,11 @@ export interface MpesaState {
 const NEUTRAL_BADGE = 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300';
 
 export const rateStatusMeta: Record<RateStatus, { label: string; color: string; badge: string }> = {
-  paid: { label: 'Paid', color: '#16a34a', badge: NEUTRAL_BADGE },
-  processing: { label: 'Confirming', color: '#2563eb', badge: NEUTRAL_BADGE },
-  unpaid: { label: 'Unpaid', color: '#404040', badge: NEUTRAL_BADGE },
-  overdue: { label: 'Overdue', color: '#dc2626', badge: NEUTRAL_BADGE },
-  not_billed: { label: 'No bill', color: '#a3a3a3', badge: NEUTRAL_BADGE },
+  paid: { label: 'Paid', color: '#34c759', badge: NEUTRAL_BADGE },
+  processing: { label: 'Confirming', color: '#007aff', badge: NEUTRAL_BADGE },
+  unpaid: { label: 'Unpaid', color: '#ff6961', badge: NEUTRAL_BADGE },
+  overdue: { label: 'Overdue', color: '#ff3b30', badge: NEUTRAL_BADGE },
+  not_billed: { label: 'No bill', color: '#aeaeb2', badge: NEUTRAL_BADGE },
 };
 
 export const FIRST_RATING_YEAR = new Date().getFullYear() - 20;

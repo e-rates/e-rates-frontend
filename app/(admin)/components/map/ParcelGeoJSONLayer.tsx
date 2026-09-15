@@ -10,11 +10,11 @@ import { cachedParcels, getParcels, parcelsSignature } from '@/lib/parcelCache';
 import { paymentStatusOf, subscribePaymentStatuses, watchPaymentStatuses } from '@/lib/paymentStatuses';
 
 export const PAYMENT_COLORS: Record<string, { color: string; edge: string; label: string }> = {
-  paid: { color: '#16a34a', edge: '#14532d', label: 'Paid' },
-  processing: { color: '#2563eb', edge: '#1e3a8a', label: 'Confirming' },
-  unpaid: { color: '#525252', edge: '#171717', label: 'Unpaid' },
-  overdue: { color: '#dc2626', edge: '#7f1d1d', label: 'Overdue' },
-  not_billed: { color: '#a3a3a3', edge: '#525252', label: 'No bill' },
+  paid: { color: '#34c759', edge: '#248a3d', label: 'Paid' },
+  processing: { color: '#007aff', edge: '#0040dd', label: 'Confirming' },
+  unpaid: { color: '#ff6961', edge: '#d70015', label: 'Unpaid' },
+  overdue: { color: '#ff3b30', edge: '#a50011', label: 'Overdue' },
+  not_billed: { color: '#aeaeb2', edge: '#636366', label: 'No bill' },
 };
 
 const INACTIVE = { color: '#d4d4d4', edge: '#a3a3a3', label: 'Inactive' };

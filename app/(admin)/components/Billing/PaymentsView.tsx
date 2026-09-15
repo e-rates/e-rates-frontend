@@ -15,11 +15,11 @@ const button =
   'border-border-default hover:bg-hover-surface flex items-center gap-2 border-[0.5px] px-3 py-1.5 text-sm text-text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-40';
 
 const STATUS: Record<Payment['status'], { label: string; dot: string }> = {
-  completed: { label: 'Paid', dot: '#16a34a' },
-  processing: { label: 'Confirming', dot: '#2563eb' },
-  pending: { label: 'Unpaid', dot: '#525252' },
-  failed: { label: 'Not completed', dot: '#dc2626' },
-  refunded: { label: 'Refunded', dot: '#a3a3a3' },
+  completed: { label: 'Paid', dot: '#34c759' },
+  processing: { label: 'Confirming', dot: '#007aff' },
+  pending: { label: 'Unpaid', dot: '#ff6961' },
+  failed: { label: 'Not completed', dot: '#ff3b30' },
+  refunded: { label: 'Refunded', dot: '#aeaeb2' },
 };
 
 const FILTERS: { key: '' | Payment['status']; label: string }[] = [
