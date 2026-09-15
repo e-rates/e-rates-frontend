@@ -2,9 +2,10 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Download, FilePlus2, Plus, UserCheck, X } from 'lucide-react';
+import { BadgePercent, Download, FilePlus2, Plus, UserCheck, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { IssueBills } from '../../components/Billing/IssueBills';
+import { Waivers } from '../../components/Billing/Waivers';
 import { useAuth } from '@/hooks/useAuth';
 import { ratingYears } from '@/lib/rates';
 import { exportDefaulters, fetchDefaulters } from './service';
@@ -316,6 +317,7 @@ function DefaultersView() {
   const canBill = userRole === 'admin';
   const [billedYears, setBilledYears] = useState<number[]>([]);
   const [billingYear, setBillingYear] = useState<number | null>(null);
+  const [waiversOpen, setWaiversOpen] = useState(false);
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -368,9 +370,14 @@ function DefaultersView() {
           )}
         </div>
         {canBill && (
-          <button onClick={() => setBillingYear(year)} className={`${exportButton} mb-2`}>
-            <FilePlus2 className="h-4 w-4" /> {billedYears.includes(year) ? `Update ${year} rates` : `Issue ${year} bills`}
-          </button>
+          <div className="mb-2 flex gap-2">
+            <button onClick={() => setWaiversOpen(true)} className={exportButton}>
+              <BadgePercent className="h-4 w-4" /> Waivers
+            </button>
+            <button onClick={() => setBillingYear(year)} className={exportButton}>
+              <FilePlus2 className="h-4 w-4" /> {billedYears.includes(year) ? `Update ${year} rates` : `Issue ${year} bills`}
+            </button>
+          </div>
         )}
       </div>
 
@@ -381,6 +388,7 @@ function DefaultersView() {
       )}
 
       {canBill && <IssueBills year={billingYear} isOwner={false} onClose={() => setBillingYear(null)} onIssued={issued} />}
+      {canBill && <Waivers open={waiversOpen} year={year} onClose={() => setWaiversOpen(false)} onChanged={() => setRefresh((n) => n + 1)} />}
     </div>
   );
 }

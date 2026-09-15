@@ -16,6 +16,7 @@ export interface RateBill {
   paid_at: string | null;
   explanation: string | null;
   standard_amount: string | null;
+  waiver: { waiver_id: string; name: string; percent: string } | null;
 }
 
 export interface RateParcelProperties {

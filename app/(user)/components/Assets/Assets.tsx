@@ -182,7 +182,13 @@ function BillBox({ feature }: { feature: RateParcelFeature }) {
       {bill.explanation && (
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
           {bill.explanation}
-          {bill.standard_amount && Number(bill.standard_amount) !== Number(bill.amount) && ` (adjusted to ${formatKes(bill.amount)})`}
+          {!bill.waiver && bill.standard_amount && Number(bill.standard_amount) !== Number(bill.amount) && ` (adjusted to ${formatKes(bill.amount)})`}
+        </p>
+      )}
+      {bill.waiver && (
+        <p className="mt-2 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+          {Number(bill.waiver.percent)}% waiver · {bill.waiver.name}
+          {bill.standard_amount && ` · was ${formatKes(bill.standard_amount)}`}
         </p>
       )}
 
