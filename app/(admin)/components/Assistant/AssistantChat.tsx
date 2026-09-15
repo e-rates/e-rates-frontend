@@ -5,7 +5,7 @@ import { Send, Download, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
-import { backendFetch } from '@/lib/backend';
+import { backendFetch, backendJson } from '@/lib/backend';
 import { downloadBlob } from '@/lib/format';
 
 async function downloadPdf(href: string) {
