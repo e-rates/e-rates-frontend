@@ -38,7 +38,7 @@ export function WardsPanel() {
     };
   }, [year]);
 
-  const totalOverdue = (wards ?? []).reduce((sum, w) => sum + w.overdue, 0);
+  const totalOverdue = (wards ?? []).reduce((sum, w) => sum + w.unpaid, 0);
 
   return (
     <section className="border-border-default mt-2 flex min-h-0 flex-col border-t-[0.5px] pt-3">

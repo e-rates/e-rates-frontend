@@ -9,7 +9,6 @@ import { Waivers } from '../../components/Billing/Waivers';
 import { PaymentsView } from '../../components/Billing/PaymentsView';
 import { useAuth } from '@/hooks/useAuth';
 import { ratingYears } from '@/lib/rates';
-import { exportDefaulters, fetchDefaulters } from './service';
 import { backendJson } from '@/lib/backend';
 import { downloadBlob, downloadCSV, formatMoney, today } from '@/lib/format';
 import { titleCase } from '../../components/QuickAccess/WardsPanel';
@@ -69,91 +68,6 @@ function TableHeader({
 const exportButton =
   'border-border-default hover:bg-hover-surface flex items-center gap-2 border-[0.5px] px-3 py-1.5 text-sm text-text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-40';
 
-function DefaultersTable() {
-  const [rows, setRows] = useState<DefaulterRow[] | null>(null);
-  const [total, setTotal] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-
-  useEffect(() => {
-    fetchDefaulters()
-      .then((data: any) => {
-        setRows(data.results ?? []);
-        setTotal(data.count ?? 0);
-      })
-      .catch((e: Error) => setError(e.message));
-  }, []);
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      const blob = await exportDefaulters();
-      if (blob.size === 0) {
-        toast('There are no defaulters to export');
-        return;
-      }
-      downloadBlob(blob, `defaulters-${today()}.csv`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <TableHeader
-        title="All defaulters"
-        subtitle={rows ? `${total} overdue payment${total === 1 ? '' : 's'} · pick a ward on the left to see its parcels` : 'Loading…'}
-        actions={
-          <button onClick={handleExport} disabled={exporting || !rows?.length} className={exportButton}>
-            <Download className="h-4 w-4" />
-            {exporting ? 'Exporting…' : 'Export CSV'}
-          </button>
-        }
-      />
-      {error ? (
-        <EmptyState icon={UserCheck} title="Couldn’t load defaulters" message={error} />
-      ) : rows && rows.length === 0 ? (
-        <EmptyState icon={UserCheck} title="No defaulters" message="Nobody has an overdue rate payment right now." />
-      ) : (
-        <table className="w-full text-sm">
-          <thead className={TABLE_HEAD}>
-            <tr className="border-border-default border-b-[0.5px]">
-              <th className={CELL}>Owner</th>
-              <th className={CELL}>Plot</th>
-              <th className={`${CELL} text-right`}>Amount due</th>
-              <th className={`${CELL} text-right`}>Overdue</th>
-            </tr>
-          </thead>
-          <tbody className="divide-border-default divide-y-[0.5px]">
-            {!rows
-              ? [0, 1, 2].map((i) => (
-                  <tr key={i}>
-                    <td colSpan={4} className={CELL}>
-                      <div className="bg-hover-surface h-4" />
-                    </td>
-                  </tr>
-                ))
-              : rows.map((row) => (
-                  <tr key={row.payment_id} className="hover:bg-hover-surface">
-                    <td className={`${CELL} font-medium text-text-primary`}>{row.username}</td>
-                    <td className={`${CELL} text-text-secondary`}>{row.parcels[0]?.parcel_ref ?? '—'}</td>
-                    <td className={`${CELL} text-right font-medium text-text-primary tabular-nums`}>
-                      {formatMoney(row.amount, row.currency)}
-                    </td>
-                    <td className={`${CELL} text-right text-red-600 tabular-nums dark:text-red-400`}>
-                      {row.days_overdue} day{row.days_overdue === 1 ? '' : 's'}
-                    </td>
-                  </tr>
-                ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
 interface WardParcel {
   parcel_id: string;
   parcel_ref: string;
@@ -174,7 +88,9 @@ interface WardParcel {
 const area = (m2: number | null) => (!m2 ? '—' : m2 >= 1000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`);
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { dateStyle: 'medium' });
 
-function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: number }) {
+const DUE = ['overdue', 'unpaid', 'processing'];
+
+function WardParcelsTable({ ward, year: selectedYear }: { ward: string | null; year: number }) {
   const router = useRouter();
   const [rows, setRows] = useState<WardParcel[] | null>(null);
   const [year, setYear] = useState<number | null>(null);
@@ -182,10 +98,10 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
 
   useEffect(() => {
     let cancelled = false;
-    backendJson<{ year: number; parcels: WardParcel[] }>(`/api/payments/ward-parcels/?ward=${encodeURIComponent(ward)}&year=${selectedYear}`)
+    backendJson<{ year: number; parcels: WardParcel[] }>(`/api/payments/ward-parcels/?${ward ? `ward=${encodeURIComponent(ward)}&` : ''}year=${selectedYear}`)
       .then((data) => {
         if (cancelled) return;
-        setRows(data.parcels);
+        setRows(data.parcels.filter((p) => DUE.includes(p.status)));
         setYear(data.year);
         setError(null);
       })
@@ -197,7 +113,7 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
   }, [ward, selectedYear]);
 
   const overdue = rows?.filter((r) => r.status === 'overdue') ?? [];
-  const due = (rows ?? []).filter((r) => ['overdue', 'unpaid', 'processing'].includes(r.status));
+  const due = rows ?? [];
   const dueTotal = due.reduce((sum, r) => sum + Number(r.amount ?? 0), 0);
 
   const exportWard = () => {
@@ -218,24 +134,26 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
         r.days_overdue ?? '',
         r.receipt ?? '',
       ]),
-      `${ward}-ward-${year ?? ''}-${today()}.csv`
+      `${ward ? `${ward}-ward` : 'defaulters'}-${year ?? ''}-${today()}.csv`
     );
   };
 
   return (
     <div className="flex-1 overflow-y-auto">
       <TableHeader
-        title={`${titleCase(ward)} ward`}
+        title={ward ? `Defaulters · ${titleCase(ward)} ward` : 'All defaulters'}
         subtitle={
           rows
-            ? `${rows.length} plot${rows.length === 1 ? '' : 's'} · ${overdue.length} overdue · ${formatMoney(dueTotal)} outstanding for ${year}`
+            ? `${rows.length} unpaid plot${rows.length === 1 ? '' : 's'} · ${overdue.length} past the deadline · ${formatMoney(dueTotal)} outstanding for ${year}${ward ? '' : ' · pick a ward on the left to narrow down'}`
             : 'Loading…'
         }
         actions={
           <>
-            <button onClick={() => router.push(`/dashboard/defaulters${selectedYear !== new Date().getFullYear() ? `?year=${selectedYear}` : ''}`)} className={exportButton}>
-              <X className="h-4 w-4" /> All defaulters
-            </button>
+            {ward && (
+              <button onClick={() => router.push(`/dashboard/defaulters${selectedYear !== new Date().getFullYear() ? `?year=${selectedYear}` : ''}`)} className={exportButton}>
+                <X className="h-4 w-4" /> All wards
+              </button>
+            )}
             <button onClick={exportWard} disabled={!rows?.length} className={exportButton}>
               <Download className="h-4 w-4" /> Export CSV
             </button>
@@ -245,7 +163,7 @@ function WardParcelsTable({ ward, year: selectedYear }: { ward: string; year: nu
       {error ? (
         <EmptyState icon={UserCheck} title="Couldn’t load this ward" message={error} />
       ) : rows && rows.length === 0 ? (
-        <EmptyState icon={UserCheck} title="No allocated plots" message="No plots in this ward are allocated to an owner yet." />
+        <EmptyState icon={UserCheck} title="No defaulters" message={`Every billed plot${ward ? ' in this ward' : ''} has paid for ${year ?? selectedYear}.`} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -409,10 +327,8 @@ function DefaultersView() {
 
       {view === 'payments' ? (
         <PaymentsView key={`payments-${year}-${refresh}`} />
-      ) : ward ? (
-        <WardParcelsTable key={`${ward}-${year}-${refresh}`} ward={ward} year={year} />
       ) : (
-        <DefaultersTable key={refresh} />
+        <WardParcelsTable key={`${ward}-${year}-${refresh}`} ward={ward} year={year} />
       )}
 
       {canBill && <IssueBills year={billingYear} isOwner={false} onClose={() => setBillingYear(null)} onIssued={issued} />}
