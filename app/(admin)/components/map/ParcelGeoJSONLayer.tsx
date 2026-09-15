@@ -6,7 +6,7 @@ import L from 'leaflet';
 import toast from 'react-hot-toast';
 import { useMapContext } from '../../context/MapContext';
 import { usePathname } from 'next/navigation';
-import { getParcels, isParcelCacheFresh } from '@/lib/parcelCache';
+import { cachedParcels, getParcels, parcelsSignature } from '@/lib/parcelCache';
 import { paymentStatusOf, subscribePaymentStatuses, watchPaymentStatuses } from '@/lib/paymentStatuses';
 
 export const PAYMENT_COLORS: Record<string, { color: string; edge: string; label: string }> = {
@@ -207,28 +207,25 @@ export function ParcelGeoJSONLayer() {
     };
 
     const loadParcels = async () => {
-      const fromCache = isParcelCacheFresh();
-      if (!fromCache) {
-        toast.loading('Loading parcels...', { id: PARCELS_TOAST_ID });
-      }
+      const cached = cachedParcels();
+      if (cached) buildLayer(cached, false);
+      else toast.loading('Loading parcels...', { id: PARCELS_TOAST_ID });
       try {
         const parcelData = await getParcels();
         if (cancelled) return;
 
         if (!parcelData?.features?.length) {
-          toast.error('No parcels found', { id: PARCELS_TOAST_ID });
+          if (!cached) toast.error('No parcels found', { id: PARCELS_TOAST_ID });
           return;
         }
+        if (cached && parcelsSignature(cached) === parcelsSignature(parcelData)) return;
 
-        buildLayer(parcelData, true);
-        if (!fromCache) {
-          toast.success(`Loaded ${parcelData.features.length} parcels`, {
-            id: PARCELS_TOAST_ID,
-          });
-        }
+        if (geoJsonLayerRef.current) map.removeLayer(geoJsonLayerRef.current);
+        buildLayer(parcelData, !cached);
+        if (!cached) toast.dismiss(PARCELS_TOAST_ID);
       } catch (error) {
         console.error('Error loading parcels:', error);
-        if (!cancelled) {
+        if (!cancelled && !cached) {
           toast.error('Failed to load parcels', { id: PARCELS_TOAST_ID });
         }
       }

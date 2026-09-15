@@ -1,29 +1,18 @@
-import { parcelService } from './parcelService';
+import { backendJson } from './backend';
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-let cache: { data: any; loadedAt: number } | null = null;
+let cache: any = null;
 let request: Promise<any> | null = null;
 
-export const isParcelCacheFresh = () =>
-  !!cache && Date.now() - cache.loadedAt < CACHE_TTL_MS;
+export const cachedParcels = () => cache;
 
 export const invalidateParcelCache = () => {
   cache = null;
-  if (typeof window !== 'undefined') {
-    import('./db/init')
-      .then(({ getDB }) => getDB())
-      .then((db) => db.clear('parcels'))
-      .catch(() => {});
-  }
 };
 
 export function getParcels(): Promise<any> {
-  if (isParcelCacheFresh()) return Promise.resolve(cache!.data);
-  request ??= parcelService
-    .getAllParcels()
+  request ??= backendJson<any>('/api/parcels/geojson/')
     .then((data) => {
-      if (data?.features?.length) cache = { data, loadedAt: Date.now() };
+      if (data?.features?.length) cache = data;
       return data;
     })
     .finally(() => {
@@ -31,3 +20,6 @@ export function getParcels(): Promise<any> {
     });
   return request;
 }
+
+export const parcelsSignature = (data: any) =>
+  (data?.features ?? []).map((f: any) => `${f.id}:${f.properties?.owner_user ?? ''}:${f.properties?.status ?? ''}`).join('|');
