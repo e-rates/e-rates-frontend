@@ -19,6 +19,21 @@ export interface RateBill {
   waiver: { waiver_id: string; name: string; percent: string } | null;
 }
 
+export interface MyWaiver {
+  waiver_id: string;
+  county: string;
+  name: string;
+  legal_reference: string;
+  percent: string;
+  years: number[];
+  starts_on: string;
+  ends_on: string | null;
+  status: 'active' | 'scheduled' | 'ended';
+  created_at: string;
+  plots: string[];
+  claimed_plots: string[];
+}
+
 export interface RateParcelProperties {
   parcel_ref: string;
   owner_id: string | null;

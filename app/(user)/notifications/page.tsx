@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   AlertCircle,
+  BadgePercent,
   Bell,
   CheckCircle2,
   Clock,
@@ -13,6 +15,7 @@ import {
 import { backendJson } from '@/lib/backend';
 import { formatDate, formatMoney, timeAgo } from '@/lib/format';
 import { parcelOf, type Paginated, type Payment } from '@/lib/payments';
+import type { MyWaiver } from '@/lib/rates';
 
 interface NotificationItem {
   id: string;
@@ -21,7 +24,18 @@ interface NotificationItem {
   title: string;
   message: string;
   time: string;
+  href?: string;
 }
+
+const toWaiverNotification = (w: MyWaiver): NotificationItem => ({
+  id: `waiver-${w.waiver_id}`,
+  icon: BadgePercent,
+  tone: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400',
+  title: `${Number(w.percent)}% waiver available`,
+  message: `${w.county} is offering ${w.name} on plot ${w.plots.filter((p) => !w.claimed_plots.includes(p)).join(', ')}. Claim it to reduce your bill.`,
+  time: timeAgo(w.created_at),
+  href: '/waivers',
+});
 
 const toNotification = (p: Payment): NotificationItem => {
   const amount = formatMoney(p.amount, p.currency);
@@ -53,8 +67,16 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    backendJson<Paginated<Payment>>('/api/payments/?ordering=-updated_at')
-      .then((page) => setItems(page.results.map(toNotification)))
+    Promise.all([
+      backendJson<Paginated<Payment>>('/api/payments/?ordering=-updated_at'),
+      backendJson<MyWaiver[]>('/api/waivers/mine/'),
+    ])
+      .then(([page, waivers]) =>
+        setItems([
+          ...waivers.filter((w) => w.status !== 'ended' && w.plots.some((p) => !w.claimed_plots.includes(p))).map(toWaiverNotification),
+          ...page.results.map(toNotification),
+        ])
+      )
       .catch((e: Error) => setError(e.message));
   }, []);
 
@@ -94,6 +116,11 @@ export default function NotificationsPage() {
                       <span className="shrink-0 text-xs text-neutral-500">{item.time}</span>
                     </div>
                     <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">{item.message}</p>
+                    {item.href && (
+                      <Link href={item.href} className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                        Claim waiver →
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

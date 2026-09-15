@@ -22,6 +22,7 @@ interface Waiver extends Record<Block, string[]> {
   created_at: string;
   revoked_by: string | null;
   bills_affected: number;
+  claims: number;
   amount_waived: string;
 }
 
@@ -259,7 +260,7 @@ export function Waivers({ open, year, onClose, onChanged }: { open: boolean; yea
           <div>
             <h2 className="text-base font-semibold text-text-primary">{creating ? 'New waiver' : 'Waivers'}</h2>
             <p className="mt-0.5 text-xs text-text-tertiary">
-              A percentage off the bill amount, applied automatically to unpaid bills it covers. Every change is logged.
+              A percentage off the bill amount. Landowners it covers are notified and claim it on their Waivers page. Every change is logged.
             </p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-text-tertiary hover:text-text-primary">
@@ -315,8 +316,8 @@ export function Waivers({ open, year, onClose, onChanged }: { open: boolean; yea
             {preview && (
               <div className="border-border-default bg-hover-surface mt-4 border-[0.5px] p-3 text-sm text-text-primary">
                 <p className="font-medium">
-                  {preview.bills} unpaid bill{preview.bills === 1 ? '' : 's'} on {preview.parcels} plot{preview.parcels === 1 ? '' : 's'} ·{' '}
-                  {formatMoney(preview.amount_waived)} waived
+                  {preview.bills} eligible unpaid bill{preview.bills === 1 ? '' : 's'} on {preview.parcels} plot{preview.parcels === 1 ? '' : 's'} ·{' '}
+                  up to {formatMoney(preview.amount_waived)} if all claim
                 </p>
                 <p className="mt-1 text-xs text-text-secondary">{scopeText({ ...scope, years })}</p>
               </div>
@@ -356,7 +357,7 @@ export function Waivers({ open, year, onClose, onChanged }: { open: boolean; yea
                     <p className="mt-0.5 flex items-center gap-1.5 text-xs text-text-tertiary">
                       <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[w.status]}`} />
                       {w.status} · from {w.starts_on}
-                      {w.ends_on ? ` to ${w.ends_on}` : ''} · {w.bills_affected} bills, {formatMoney(w.amount_waived)} · by {w.created_by ?? '—'}
+                      {w.ends_on ? ` to ${w.ends_on}` : ''} · {w.claims} claimed of {w.bills_affected} eligible bills, up to {formatMoney(w.amount_waived)} · by {w.created_by ?? '—'}
                       {w.revoked_by ? ` · revoked by ${w.revoked_by}` : ''}
                       {w.legal_reference ? ` · ${w.legal_reference}` : ''}
                     </p>
