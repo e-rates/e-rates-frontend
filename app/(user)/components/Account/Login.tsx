@@ -33,6 +33,10 @@ const Login: React.FC = () => {
   const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
+    // Sanitize URL immediately if sensitive parameters leaked in query string
+    if (typeof window !== 'undefined' && (window.location.search.includes('password') || window.location.search.includes('phonenumber') || window.location.search.includes('phone'))) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     const saved = localStorage.getItem('countyName');
     if (saved) {
       setLastCounty(saved);
@@ -224,7 +228,7 @@ const Login: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form method="POST" action="#" onSubmit={(e) => { e.preventDefault(); handleSubmit(onSubmit)(e); }} className="space-y-4">
             {error && (
               <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400 text-left">
                 {error}
