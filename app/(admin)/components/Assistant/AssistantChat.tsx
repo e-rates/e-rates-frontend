@@ -6,16 +6,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import { backendFetch, backendJson } from '@/lib/backend';
-import { downloadBlob } from '@/lib/format';
 
 async function downloadPdf(href: string) {
   try {
-    const response = await backendFetch(href);
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || body.detail || `Download failed (${response.status})`);
-    }
-    downloadBlob(await response.blob(), new URL(href, window.location.origin).searchParams.get('file') || 'report.pdf');
+    const target = new URL(href, window.location.origin);
+    target.searchParams.set('path', target.pathname.includes('ai-download') ? 'ai-download' : 'download');
+    const { url } = await backendJson<{ url: string }>(`/api/reports/download-link/${target.search}`);
+    window.location.href = url;
   } catch (e) {
     toast.error((e as Error).message);
   }

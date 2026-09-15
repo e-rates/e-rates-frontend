@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { backendFetch } from '@/lib/backend';
-import { downloadBlob } from '@/lib/format';
+import { backendJson } from '@/lib/backend';
 import { ratingYears } from '@/lib/rates';
 
 type Format = 'pdf' | 'xlsx';
@@ -16,11 +15,6 @@ const button =
 
 const isoToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
 const firstOfMonth = () => `${isoToday().slice(0, 8)}01`;
-
-function filenameFrom(response: Response, fallback: string) {
-  const match = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '');
-  return match?.[1] ?? fallback;
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -48,12 +42,8 @@ export default function ReportsPage() {
     }
     setBusy(`${report}-${format}`);
     try {
-      const response = await backendFetch(`/api/reports/download/?${query}`);
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || body.detail || `Report failed (${response.status})`);
-      }
-      downloadBlob(await response.blob(), filenameFrom(response, `${report}.${format}`));
+      const { url } = await backendJson<{ url: string }>(`/api/reports/download-link/?${query}`);
+      window.location.href = url;
     } catch (e) {
       const message = (e as Error).message;
       toast.error(

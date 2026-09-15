@@ -82,6 +82,7 @@ export function ThemedToaster() {
     <Toaster
       position="top-center"
       gutter={8}
+      containerStyle={{ zIndex: 100000 }}
       toastOptions={{
         // Toast duration in milliseconds
         duration: 5000,

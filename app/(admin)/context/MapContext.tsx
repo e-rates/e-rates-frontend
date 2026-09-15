@@ -172,6 +172,7 @@ export const MapProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         toast.success(`Parcel ${feature.properties.parcel_ref} - Owner: ${feature.properties.owner_username || 'Unallocated'}`, {
+          id: 'locate-parcel',
           duration: 3000,
         });
       } else {
